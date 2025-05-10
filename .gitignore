@@ -1,6 +1,6 @@
 # Don't track content of these folders
-Output/
-
+# Output/
+.venv/
 
 # Don't track this files #
 telegramSettings.py

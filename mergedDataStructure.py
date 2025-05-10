@@ -47,5 +47,5 @@ class MergedDataStructure():
         #Converts the date to string
         dateString=str(date)
         #given the date, you get an interval of past days or weeks
-        return self.list[self.dict[dateString]-(self.delta):self.dict[dateString]]
-
+        result = self.list[self.dict[dateString]-(self.delta):self.dict[dateString]]
+        return result

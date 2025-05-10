@@ -5,6 +5,18 @@
 #os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID";
 #os.environ["CUDA_VISIBLE_DEVICES"]="0";
 
+import os
+import logging
+import tensorflow as tf
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL only
+tf.get_logger().setLevel('FATAL')  # FATAL only
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
+
+# Tắt các log messages khác
+logging.getLogger('tensorflow.core').setLevel(logging.FATAL)
+logging.getLogger('tensorflow.python').setLevel(logging.FATAL)
+logging.getLogger('tensorflow.framework').setLevel(logging.FATAL)
+
 #This is the class call for the Agent which will perform the experiment
 from deepQTrading import DeepQTrading
 
@@ -80,7 +92,7 @@ model.add(Activation('linear'))
 #nOutput:number of walks
 dqt = DeepQTrading(
     model=model,
-    explorations=[(0.2,100)],
+    explorations=[(0.2,5)],
     trainSize=datetime.timedelta(days=360*5),
     validationSize=datetime.timedelta(days=30*6),
     testSize=datetime.timedelta(days=30*6),
@@ -95,5 +107,3 @@ dqt = DeepQTrading(
 dqt.run()
 
 dqt.end()
-
-

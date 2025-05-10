@@ -1,22 +1,31 @@
 #Copyright (C) 2020 Salvatore Carta, Anselmo Ferreira, Alessandro Sebastian Podda, Diego Reforgiato Recupero, Antonio Sanna. All rights reserved.
 import pandas as pd
+import os
+import sys
 
+def combine_signals():
+    long = [[],[]]
+    short = [[],[]]
 
+    longs = pd.read_csv("./Output/results/spLong.csv")
+    shorts = pd.read_csv("./Output/results/spShort.csv")
 
-long = [[],[]]
-short = [[],[]]
+    long[0] = longs.ix[:,"Date"].tolist()
+    long[1] = longs.ix[:,"ensemble"].tolist()
+    short[0] = shorts.ix[:,"Date"].tolist()
+    short[1] = shorts.ix[:,"ensemble"].tolist()
 
-longs=pd.read_csv("./Output/results/spLong.csv")
-shorts=pd.read_csv("./Output/results/spShort.csv")
+    # Tạo thư mục results nếu chưa tồn tại
+    os.makedirs("./Output/results", exist_ok=True)
+    
+    output = open("./Output/results/finalEnsemble.csv", "w+")
+    output.write("date,ensemble\n")
 
-long[0]= longs.ix[:,"Date"].tolist()
-long[1]= longs.ix[:,"ensemble"].tolist()
-short[0] = shorts.ix[:,"Date"].tolist()
-short[1] = shorts.ix[:,"ensemble"].tolist()
+    for i in range(0,len(long[0])):
+        if(long[0][i]==short[0][i]):
+            output.write(str(long[0][i]) + "," + str(long[1][i]+short[1][i]) + "\n")
+    
+    output.close()
 
-output = open("finalEnsemble.csv", "w+")
-output.write("date,ensemble\n")
-
-for i in range(0,len(long[0])):
-    if(long[0][i]==short[0][i]):
-        output.write(str(long[0][i]) + "," + str(long[1][i]+short[1][i]) + "\n")
+if __name__ == "__main__":
+    combine_signals()

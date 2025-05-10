@@ -29,12 +29,12 @@ def perc_ensemble(df, thr = 0.7):
 
 
 numDel=0
-df=pd.read_csv("./Output/ensamble/walk0ensamble_test.csv",index_col='Date')
+df=pd.read_csv("./Output/ensemble/walk0ensemble_test.csv",index_col='Date')
 
 fulldf=full_ensemble(df)
 
 for j in range(0,5):
-    df=pd.read_csv("./Output/ensamble/walk"+str(j)+"ensamble_test.csv",index_col='Date')
+    df=pd.read_csv("./Output/ensemble/walk"+str(j)+"ensemble_test.csv",index_col='Date')
 
     for deleted in range(1,numDel):
         del df['iteration'+str(deleted)]

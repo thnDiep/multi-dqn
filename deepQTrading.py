@@ -240,7 +240,6 @@ class DeepQTrading:
             
             #Explorations are epochs considered, or how many times the agent will play the game.  
             for eps in self.explorations:
-
                 #policy will be 0.2, so the randomness of predictions (actions) will happen with 20% of probability 
                 self.policy.eps = eps[0]
                 

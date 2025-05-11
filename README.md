@@ -44,15 +44,21 @@ On the other hand, the file **utils/plotResults.py** can be used to generate a .
 ## Usage
 
 The code needs three positional parameters to be correctly executed:<br>
-`python main.py <numberOfActions> <isOnlyShort> <ensembleFolder>`<br>
+`python main.py <numberOfActions> <isOnlyShort> <market> <modelName>`<br>
 <br>
 
 -   To run the **FULL** agent you need to run: `python main.py 3 0 ensembleFolder`
 -   To run the **ONLY LONG** agent you need to run: `python main.py 2 0 ensembleFolder`
 -   To run the **ONLY SHORT** agent you need to run: `python main.py 2 1 ensembleFolder`
 
-(UPDATED)
-
--   To run the **FULL** agent you need to run: `python main.py 3 0 dax`
-
 where the paramenter **ensembleFolder** is used to set the name of the folder in which you'll get your results.
+
+(UPDATED)
+`python main.py <numberOfActions> <isOnlyShort> <market> <modelName>`<br>
+<br>
+
+-   To run the **FULL** agent you need to run: `python main.py 3 0 dax original`
+-   To run the **FULL** agent you need to run: `python main.py 3 0 dax attention`
+-   To run the **FULL** agent you need to run: `python main.py 3 0 dax seq2seq`
+
+

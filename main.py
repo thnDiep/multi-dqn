@@ -6,17 +6,8 @@
 #os.environ["CUDA_VISIBLE_DEVICES"]="0";
 
 import os
-import logging
+import numpy as np
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL only
-tf.get_logger().setLevel('FATAL')  # FATAL only
-logging.getLogger('tensorflow').setLevel(logging.FATAL)
-
-# Tắt các log messages khác
-logging.getLogger('tensorflow.core').setLevel(logging.FATAL)
-logging.getLogger('tensorflow.python').setLevel(logging.FATAL)
-logging.getLogger('tensorflow.framework').setLevel(logging.FATAL)
-
 
 #This is the class call for the Agent which will perform the experiment
 from deepQTrading import DeepQTrading
@@ -52,9 +43,20 @@ import sys
 #set_session(tf.Session(config=config))
 
 
-
 #Let's capture the starting time and send it to the destination in order to tell that the experiment started 
 startingTime=datetime.datetime.now()
+
+# Danh sách các thị trường và model được hỗ trợ
+SUPPORTED_MARKETS = ["dax", "sp500"]
+SUPPORTED_MODELS = ["original", "attention", "seq2seq"]
+
+# Kiểm tra tham số đầu vào
+if len(sys.argv) < 5:
+    print("Usage: python main.py <numberOfActions> <isOnlyShort> <market> <modelName>")
+    print(f"Supported markets: {', '.join(SUPPORTED_MARKETS)}")
+    print(f"Supported models: {', '.join(SUPPORTED_MODELS)}")
+    sys.exit(1)
+
 
 #There are three actions possible in the stock market
 #Hold(id 0): do nothing.
@@ -63,8 +65,20 @@ startingTime=datetime.datetime.now()
 #Short(id 2): It predicts that the stock market value will decrease at the end of the day.
 #So, the action that must be done is selling at the beginning of the day and buy it at the end of the day (aka short). 
 nb_actions = int(sys.argv[1])
+isOnlyShort = sys.argv[2]==1
+MK = sys.argv[3]
+MODEL_NAME = sys.argv[4]
 
-isOnlyShort=sys.argv[2]==1
+# Kiểm tra thị trường và model có hợp lệ không
+if MK not in SUPPORTED_MARKETS:
+    print(f"Error: Market '{MK}' is not supported")
+    print(f"Supported markets: {', '.join(SUPPORTED_MARKETS)}")
+    sys.exit(1)
+
+if MODEL_NAME not in SUPPORTED_MODELS:
+    print(f"Error: Model '{MODEL_NAME}' is not supported")
+    print(f"Supported models: {', '.join(SUPPORTED_MODELS)}")
+    sys.exit(1)
 
 #This is a simple NN considered. It is composed of:
 #One flatten layer to get 68 dimensional vectors as input
@@ -79,10 +93,9 @@ model.add(LeakyReLU(alpha=.001))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
 
-MK = "dax"
-walk_dir = f"./Output/{MK}/csv/walks/"
-ensemble_dir = f"./Output/{MK}/ensemble"
-result_dir = f"./Output/{MK}/results/"
+walk_dir = f"./Output/csv/walks/{MK}/{MODEL_NAME}/"
+ensemble_dir = f"./Output/ensemble/{MK}/{MODEL_NAME}/"
+result_dir = f"./Output/results/{MK}/{MODEL_NAME}/"
 
 os.makedirs(walk_dir, exist_ok=True)
 os.makedirs(ensemble_dir, exist_ok=True)

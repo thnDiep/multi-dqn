@@ -344,7 +344,7 @@ class DeepQTrading:
         # self.model.save_weights(self.outputFile + "model.h5", overwrite=True)
 
         evaluate_model(
-            num_walks=24,
+            num_walks=24, # need to change later
             num_epochs=self.explorations[0][1],
             market=self.market,
             walk_files=self.outputFileName,

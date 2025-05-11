@@ -17,6 +17,7 @@ logging.getLogger('tensorflow.core').setLevel(logging.FATAL)
 logging.getLogger('tensorflow.python').setLevel(logging.FATAL)
 logging.getLogger('tensorflow.framework').setLevel(logging.FATAL)
 
+
 #This is the class call for the Agent which will perform the experiment
 from deepQTrading import DeepQTrading
 
@@ -78,7 +79,14 @@ model.add(LeakyReLU(alpha=.001))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
 
+MK = "dax"
+walk_dir = f"./Output/{MK}/csv/walks/"
+ensemble_dir = f"./Output/{MK}/ensemble"
+result_dir = f"./Output/{MK}/results/"
 
+os.makedirs(walk_dir, exist_ok=True)
+os.makedirs(ensemble_dir, exist_ok=True)
+os.makedirs(result_dir, exist_ok=True)
 #Define the DeepQTrading class with the following parameters:
 #explorations: 0.2 operations are random, and 100 epochs.
 #in this case, epochs parameter is used because the Agent acts on daily basis, so its better to repeat the experiments several
@@ -92,18 +100,20 @@ model.add(Activation('linear'))
 #nOutput:number of walks
 dqt = DeepQTrading(
     model=model,
-    explorations=[(0.2,5)],
+    explorations=[(0.2,1)],
     trainSize=datetime.timedelta(days=360*5),
     validationSize=datetime.timedelta(days=30*6),
     testSize=datetime.timedelta(days=30*6),
-    outputFile="./Output/csv/walks/walks",
+    outputFile=f"{walk_dir}/walks",
     begin=datetime.datetime(2001,1,1,0,0,0,0),
     end=datetime.datetime(2019,2,28,0,0,0,0),
     nbActions=nb_actions,
     isOnlyShort=isOnlyShort,
-    ensembleFolderName=sys.argv[3]
+    ensembleFolder=ensemble_dir,
+    resultFolder=result_dir,
+    market=MK
     )
 
-dqt.run()
+# dqt.run()
 
 dqt.end()

@@ -28,9 +28,10 @@ import pandas as pd
 #Library used to manipulate time
 import datetime
 
+#Library to manipulate files and directories
+import os
+from evaluation import evaluate_model
 
-#Prefix of the name of the market (S&P500) files used to load the data
-MK="dax"
 
 class DeepQTrading:
     
@@ -47,13 +48,13 @@ class DeepQTrading:
     #nbActions: number of decisions (0-Hold 1-Long 2-Short) 
     #nOutput is the number of walks. We are doing 5 walks.  
     #operationCost: Price for the transaction (we set they are free)
-    def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolderName, operationCost=0):
+    def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolder, resultFolder, market, operationCost=0):
         
         self.isOnlyShort=isOnlyShort
-        self.ensembleFolderName=ensembleFolderName
-
+        self.ensembleFolder=ensembleFolder
+        self.resultFolder=resultFolder
+        self.market = market
         
-
         #Define the policy, explorations, actions and model as received by parameters
         self.policy = EpsGreedyQPolicy()
         self.explorations=explorations
@@ -94,8 +95,8 @@ class DeepQTrading:
         #Read the hourly dataset
         #We join data from different files
         #Here hour data is read 
-        self.dates= pd.read_csv('./datasets/'+MK+'Hour.csv')
-        self.sp = pd.read_csv('./datasets/'+MK+'Hour.csv')
+        self.dates= pd.read_csv(f'./datasets/{self.market}Hour.csv')
+        self.sp = pd.read_csv(f'./datasets/{self.market}Hour.csv')
         #Convert the pandas format to date and time format
         self.sp['Datetime'] = pd.to_datetime(self.sp['Date'] + ' ' + self.sp['Time'])
         #Set an index to Datetime on the pandas loaded dataset. Registers will be indexes through these values
@@ -115,6 +116,7 @@ class DeepQTrading:
         self.validator=ValidationCallback()
         self.tester=ValidationCallback()
         self.outputFileName=outputFile
+        self.numWalk = 0
 
     def run(self):
         #Initiates the environments, 
@@ -249,11 +251,11 @@ class DeepQTrading:
                     del(trainEnv)
 
                     #Define the training, validation and testing environments with their respective callbacks
-                    trainEnv = SpEnv(operationCost=self.operationCost,minLimit=trainMinLimit,maxLimit=trainMaxLimit,callback=self.trainer,isOnlyShort=self.isOnlyShort)
+                    trainEnv = SpEnv(self.market, operationCost=self.operationCost,minLimit=trainMinLimit,maxLimit=trainMaxLimit,callback=self.trainer,isOnlyShort=self.isOnlyShort)
                     del(validEnv)
-                    validEnv=SpEnv(operationCost=self.operationCost,minLimit=validMinLimit,maxLimit=validMaxLimit,callback=self.validator,isOnlyShort=self.isOnlyShort,ensamble=ensambleValid,columnName="iteration"+str(i))
+                    validEnv=SpEnv(self.market, operationCost=self.operationCost,minLimit=validMinLimit,maxLimit=validMaxLimit,callback=self.validator,isOnlyShort=self.isOnlyShort,ensamble=ensambleValid,columnName="iteration"+str(i))
                     del(testEnv)
-                    testEnv=SpEnv(operationCost=self.operationCost,minLimit=testMinLimit,maxLimit=testMaxLimit,callback=self.tester,isOnlyShort=self.isOnlyShort,ensamble=ensambleTest,columnName="iteration"+str(i))
+                    testEnv=SpEnv(self.market, operationCost=self.operationCost,minLimit=testMinLimit,maxLimit=testMaxLimit,callback=self.tester,isOnlyShort=self.isOnlyShort,ensamble=ensambleTest,columnName="iteration"+str(i))
 
                     #Reset the callback
                     self.trainer.reset()
@@ -331,9 +333,23 @@ class DeepQTrading:
 
             #Write validation and Testing data into files
             #Save the files for processing later with the ensemble considering the 100 epochs
-            ensambleValid.to_csv("./Output/ensemble/"+self.ensembleFolderName+"/walk"+str(iteration)+"ensemble_valid.csv")
-            ensambleTest.to_csv("./Output/ensemble/"+self.ensembleFolderName+"/walk"+str(iteration)+"ensemble_test.csv")
+            ensambleValid.to_csv(f"{self.ensembleFolder}/walk{iteration}ensemble_valid.csv")
+            ensambleTest.to_csv(f"{self.ensembleFolder}/walk{iteration}ensemble_test.csv")
+            self.numWalk = iteration
 
     #Function to end the Agent
     def end(self):
-        print("END")
+        """Kết thúc quá trình training và tạo báo cáo đánh giá"""
+        # Lưu model cuối cùng
+        # self.model.save_weights(self.outputFile + "model.h5", overwrite=True)
+
+        evaluate_model(
+            num_walks=24,
+            num_epochs=self.explorations[0][1],
+            market=self.market,
+            walk_files=self.outputFileName,
+            ensemble_folder=self.ensembleFolder,
+            result_folder=self.resultFolder
+        )
+        
+        print(f"Evaluation completed for {self.market}. Check the Output directory for results.")

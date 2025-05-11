@@ -14,10 +14,7 @@ from datetime import datetime
 from mergedDataStructure import MergedDataStructure
 #Callback is the library used to show metrics 
 import callback
-
-#This is the prefix of the files that will be opened. It is related to the s&p500 stock market datasets
-MK = "dax"
-
+from attentionModule import AttentionModule
 
 class SpEnv(gym.Env):
     #Just for the gym library. In a continuous environment, you can do infinite decisions. 
@@ -26,16 +23,17 @@ class SpEnv(gym.Env):
 
     #Observation window is the time window regarding the "hourly" dataset 
     #ensemble variable tells to save or not the decisions at each walk
-    def __init__(self, minLimit=None, maxLimit=None, operationCost = 0, observationWindow = 40, ensamble = None, callback = None, isOnlyShort=False, columnName = "iteration-1"):
+    def __init__(self, market, minLimit=None, maxLimit=None, operationCost = 0, observationWindow = 40, ensamble = None, callback = None, isOnlyShort=False, columnName = "iteration-1"):
         #Declare the episode as the first episode
         self.episode=1
 
         self.isOnlyShort=isOnlyShort
+        self.market = market
         
         #Open the time series as the hourly dataset of S&P500
         #the input feature vector is composed of data from hours, weeks and days
         #20 from days, 8 from weeks and 40 hours, ending with 68 dimensional feature vectors
-        spTimeserie = pandas.read_csv('./datasets/'+MK+'Hour.csv')[minLimit:maxLimit] # opening the dataset
+        spTimeserie = pandas.read_csv('./datasets/'+self.market+'Hour.csv')[minLimit:maxLimit] # opening the dataset
         
         #Converts each column to a list
         Date = spTimeserie.ix[:, 'Date'].tolist()
@@ -48,9 +46,10 @@ class SpEnv(gym.Env):
         #Open the weekly and daily data as a merged data structure
         #Get 20 dimensional vectors (close-open) considering 20 past days and 8 dimensional vectors (close-open) 
         #considering 8 weeks
-        self.weekData = MergedDataStructure(delta=8,filename="./datasets/"+MK+"Week.csv")# this DS allows me to obtain previous historical data with different resolution
-        self.dayData = MergedDataStructure(delta=20,filename="./datasets/"+MK+"Day.csv")#  with low computational complexity
-        
+        self.weekData = MergedDataStructure(delta=8,filename="./datasets/"+self.market+"Week.csv")# this DS allows me to obtain previous historical data with different resolution
+        self.dayData = MergedDataStructure(delta=20,filename="./datasets/"+self.market+"Day.csv")#  with low computational complexity
+        print("Week data: " + str(self.weekData.get(Date[0])))
+        print("Day data: " + str(self.dayData.get(Date[0])))
         #Load the data
         self.output=False
 
@@ -101,6 +100,9 @@ class SpEnv(gym.Env):
         #self.history contains all the hour data. Here we search for the next day 
         while(self.history[self.currentObservation]['Date']==self.history[(self.currentObservation+self.nextObservation)%self.limit]['Date']):
             self.nextObservation+=1
+
+
+       
         
         #Initiates the values to be returned by the environment
         self.reward = None
@@ -199,6 +201,16 @@ class SpEnv(gym.Env):
         return self.getObservation(self.history[self.currentObservation]['Date'])
 
 
+    # def get_label_attention(self, date):
+        
+    def trainingAttention(self, date):
+        weights = []
+
+
+        return weights
+        
+
+
     def getObservation(self, date):
 
         #Get the dayly information and week information
@@ -219,6 +231,15 @@ class SpEnv(gym.Env):
         
         
         #The state is prepared by the environment, which is simply the feature vector
+        observation = numpy.array(
+            [list(
+                map(
+                    lambda x: (x["Close"]-x["Open"])/x["Open"],
+                        self.history[self.currentObservation-self.observationWindow:self.currentObservation]  + 
+                        self.dayData.get(date) + 
+                        self.weekData.get(date)))])
+        
+        # print("Observation: " + str(observation))
         return  numpy.array(
             [list(
                 map(
@@ -231,3 +252,36 @@ class SpEnv(gym.Env):
         self.currentObservation=self.observationWindow
         #Resets the episode to 1
         self.episode=1
+
+
+    def get_all_data_for_attention(self):
+        all_data = []
+        for i in range(self.observationWindow, self.limit):
+            # Lấy dữ liệu 40 giờ gần nhất
+            hour_data = list(
+                map(
+                    lambda x: (x["Close"] - x["Open"]) / x["Open"],
+                    self.history[i - self.observationWindow:i]
+                )
+            )
+
+            # Lấy dữ liệu 20 ngày gần nhất
+            day_data = list(
+                map(
+                    lambda x: (x["Close"] - x["Open"]) / x["Open"],
+                    self.dayData.get(self.history[i]['Date'])
+                )
+            )
+
+            # Lấy dữ liệu 8 tuần gần nhất
+            week_data = list(
+                map(
+                    lambda x: (x["Close"] - x["Open"]) / x["Open"],
+                    self.weekData.get(self.history[i]['Date'])
+                )
+            )
+
+            # Thêm sample vào danh sách
+            all_data.append((hour_data, day_data, week_data))
+
+        return all_data

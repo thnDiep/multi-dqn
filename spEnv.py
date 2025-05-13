@@ -14,7 +14,6 @@ from datetime import datetime
 from mergedDataStructure import MergedDataStructure
 #Callback is the library used to show metrics 
 import callback
-from attentionModule import AttentionModule
 
 class SpEnv(gym.Env):
     #Just for the gym library. In a continuous environment, you can do infinite decisions. 
@@ -48,8 +47,6 @@ class SpEnv(gym.Env):
         #considering 8 weeks
         self.weekData = MergedDataStructure(delta=8,filename="./datasets/"+self.market+"Week.csv")# this DS allows me to obtain previous historical data with different resolution
         self.dayData = MergedDataStructure(delta=20,filename="./datasets/"+self.market+"Day.csv")#  with low computational complexity
-        print("Week data: " + str(self.weekData.get(Date[0])))
-        print("Day data: " + str(self.dayData.get(Date[0])))
         #Load the data
         self.output=False
 
@@ -231,15 +228,6 @@ class SpEnv(gym.Env):
         
         
         #The state is prepared by the environment, which is simply the feature vector
-        observation = numpy.array(
-            [list(
-                map(
-                    lambda x: (x["Close"]-x["Open"])/x["Open"],
-                        self.history[self.currentObservation-self.observationWindow:self.currentObservation]  + 
-                        self.dayData.get(date) + 
-                        self.weekData.get(date)))])
-        
-        # print("Observation: " + str(observation))
         return  numpy.array(
             [list(
                 map(

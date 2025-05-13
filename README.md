@@ -35,7 +35,7 @@ On the other hand, the file **utils/plotResults.py** can be used to generate a .
 ## Requirements
 
 -   Python 3
--   Tensorflow (1.15): `pip install tensorflow==1.15`
+-   Tensorflow (1.14): `pip install tensorflow==1.14`
 -   Keras: `pip install keras`
 -   Keras-RL: `pip install keras-rl`
 -   OpenAI Gym: `pip install gym`
@@ -57,8 +57,6 @@ where the paramenter **ensembleFolder** is used to set the name of the folder in
 `python main.py <numberOfActions> <isOnlyShort> <market> <modelName>`<br>
 <br>
 
--   To run the **FULL** agent you need to run: `python main.py 3 0 dax original`
--   To run the **FULL** agent you need to run: `python main.py 3 0 dax attention`
--   To run the **FULL** agent you need to run: `python main.py 3 0 dax seq2seq`
-
-
+-   To run the **FULL** agent you need to run: `python -W ignore main.py 3 0 dax original`
+-   To run the **FULL** agent you need to run: `python -W ignore main.py 3 0 dax simple_atn`
+-   To run the **FULL** agent you need to run: `python -W ignore main.py 3 0 dax time_frame_atn`

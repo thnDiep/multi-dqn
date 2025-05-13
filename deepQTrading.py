@@ -48,7 +48,7 @@ class DeepQTrading:
     #nbActions: number of decisions (0-Hold 1-Long 2-Short) 
     #nOutput is the number of walks. We are doing 5 walks.  
     #operationCost: Price for the transaction (we set they are free)
-    def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolder, resultFolder, market, operationCost=0):
+    def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolder, resultFolder, market, custom_objects=None):
         
         self.isOnlyShort=isOnlyShort
         self.ensembleFolder=ensembleFolder
@@ -60,13 +60,21 @@ class DeepQTrading:
         self.explorations=explorations
         self.nbActions=nbActions
         self.model=model
+        self.custom_objects=custom_objects
 
         #Define the memory
         self.memory = SequentialMemory(limit=10000, window_length=1)
 
         #Instantiate the agent with parameters received
-        self.agent = DQNAgent(model=self.model, policy=self.policy,  nb_actions=self.nbActions, memory=self.memory, nb_steps_warmup=200, target_model_update=1e-1,
-                                    enable_double_dqn=True,enable_dueling_network=True)
+        self.agent = DQNAgent(model=self.model, 
+                              policy=self.policy,  
+                              nb_actions=self.nbActions, 
+                              memory=self.memory, 
+                              nb_steps_warmup=200, 
+                              target_model_update=1e-1,
+                              enable_double_dqn=True,
+                              enable_dueling_network=True,
+                              custom_model_objects=self.custom_objects)
         
         #Compile the agent with the adam optimizer and with the mean absolute error metric
         self.agent.compile(Adam(lr=1e-3), metrics=['mae'])
@@ -109,7 +117,7 @@ class DeepQTrading:
 
         #Receives the operation cost, which is 0
         #Operation cost is the cost for long and short. It is defined as zero
-        self.operationCost = operationCost
+        self.operationCost = 0
         
         #Call the callback for training, validation and test in order to show results for each episode 
         self.trainer=ValidationCallback()
@@ -177,8 +185,15 @@ class DeepQTrading:
             #Memory is Sequential
             self.memory = SequentialMemory(limit=10000, window_length=1)
             #Agent is initiated as passed through parameters
-            self.agent = DQNAgent(model=self.model, policy=self.policy,  nb_actions=self.nbActions, memory=self.memory, nb_steps_warmup=200, target_model_update=1e-1,
-                                    enable_double_dqn=True,enable_dueling_network=True)
+            self.agent = DQNAgent(model=self.model, 
+                                  policy=self.policy,  
+                                  nb_actions=self.nbActions, 
+                                  memory=self.memory, 
+                                  nb_steps_warmup=200, 
+                                  target_model_update=1e-1,
+                                  enable_double_dqn=True,
+                                  enable_dueling_network=True,
+                                  custom_model_objects=self.custom_objects)
             #Compile the agent with Adam initialization
             self.agent.compile(Adam(lr=1e-3), metrics=['mae'])
             

@@ -4,6 +4,11 @@
 #import os
 #os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID";
 #os.environ["CUDA_VISIBLE_DEVICES"]="0";
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import warnings
+warnings.filterwarnings("ignore")
 
 import os
 import numpy as np
@@ -32,6 +37,7 @@ from rl.agents.dqn import DQNAgent
 from rl.memory import SequentialMemory
 from rl.policy import EpsGreedyQPolicy
 
+from attention_network import build_model, ModelType
 
 #Library used for showing the exception in the case of error 
 import sys
@@ -42,21 +48,18 @@ import sys
 #config.gpu_options.per_process_gpu_memory_fraction = 0.3
 #set_session(tf.Session(config=config))
 
-
 #Let's capture the starting time and send it to the destination in order to tell that the experiment started 
 startingTime=datetime.datetime.now()
 
 # Danh sách các thị trường và model được hỗ trợ
 SUPPORTED_MARKETS = ["dax", "sp500"]
-SUPPORTED_MODELS = ["original", "attention", "seq2seq"]
 
 # Kiểm tra tham số đầu vào
 if len(sys.argv) < 5:
     print("Usage: python main.py <numberOfActions> <isOnlyShort> <market> <modelName>")
     print(f"Supported markets: {', '.join(SUPPORTED_MARKETS)}")
-    print(f"Supported models: {', '.join(SUPPORTED_MODELS)}")
+    print(f"Supported models: {', '.join(ModelType.get_values())}")
     sys.exit(1)
-
 
 #There are three actions possible in the stock market
 #Hold(id 0): do nothing.
@@ -66,40 +69,29 @@ if len(sys.argv) < 5:
 #So, the action that must be done is selling at the beginning of the day and buy it at the end of the day (aka short). 
 nb_actions = int(sys.argv[1])
 isOnlyShort = sys.argv[2]==1
-MK = sys.argv[3]
-MODEL_NAME = sys.argv[4]
+market = sys.argv[3]
+model_name = sys.argv[4]
 
 # Kiểm tra thị trường và model có hợp lệ không
-if MK not in SUPPORTED_MARKETS:
-    print(f"Error: Market '{MK}' is not supported")
+if market not in SUPPORTED_MARKETS:
+    print(f"Error: Market '{market}' is not supported")
     print(f"Supported markets: {', '.join(SUPPORTED_MARKETS)}")
     sys.exit(1)
 
-if MODEL_NAME not in SUPPORTED_MODELS:
-    print(f"Error: Model '{MODEL_NAME}' is not supported")
-    print(f"Supported models: {', '.join(SUPPORTED_MODELS)}")
+if model_name not in ModelType.get_values():
+    print(f"Error: Model '{model_name}' is not supported")
+    print(f"Supported models: {', '.join(ModelType.get_values())}")
     sys.exit(1)
 
-#This is a simple NN considered. It is composed of:
-#One flatten layer to get 68 dimensional vectors as input
-#One dense layer with 35 neurons and LeakyRelu activation
-#One final Dense Layer with the 3 actions considered
-#the input is 20 observation days from the past, 8 observations from the past week and 
-#40 observations from the past hours
-model = Sequential()
-model.add(Flatten(input_shape=(1,1,68)))
-model.add(Dense(35,activation='linear'))
-model.add(LeakyReLU(alpha=.001))
-model.add(Dense(nb_actions))
-model.add(Activation('linear'))
 
-walk_dir = f"./Output/csv/walks/{MK}/{MODEL_NAME}/"
-ensemble_dir = f"./Output/ensemble/{MK}/{MODEL_NAME}/"
-result_dir = f"./Output/results/{MK}/{MODEL_NAME}/"
+walk_dir = f"./Output/csv/walks/{market}/{model_name}/"
+ensemble_dir = f"./Output/ensemble/{market}/{model_name}/"
+result_dir = f"./Output/results/{market}/{model_name}/"
 
 os.makedirs(walk_dir, exist_ok=True)
 os.makedirs(ensemble_dir, exist_ok=True)
 os.makedirs(result_dir, exist_ok=True)
+
 #Define the DeepQTrading class with the following parameters:
 #explorations: 0.2 operations are random, and 100 epochs.
 #in this case, epochs parameter is used because the Agent acts on daily basis, so its better to repeat the experiments several
@@ -111,6 +103,7 @@ os.makedirs(result_dir, exist_ok=True)
 #begin: where the walks will start from. We are defining January 1st of 2010
 #end: where the walks will finish. We are defining February 22nd of 2019
 #nOutput:number of walks
+model, custom_objects = build_model(model_name)
 dqt = DeepQTrading(
     model=model,
     explorations=[(0.2,1)],
@@ -124,9 +117,10 @@ dqt = DeepQTrading(
     isOnlyShort=isOnlyShort,
     ensembleFolder=ensemble_dir,
     resultFolder=result_dir,
-    market=MK
+    market=market,
+    custom_objects=custom_objects
     )
 
-# dqt.run()
+dqt.run()
 
 dqt.end()

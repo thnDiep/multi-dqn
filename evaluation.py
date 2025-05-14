@@ -79,15 +79,15 @@ def ensemble(numWalks, perc, type, numDel, market, ensemble_folder):
 
             if date in market_data.index:
                 if (i['ensemble']==1):
-                    pos+= 1 if (market_data.at[date,'Close']-market_data.at[date,'Open'])/market_data.at[date,'Open'] > 0 else 0
-                    neg+= 0 if (market_data.at[date,'Close']-market_data.at[date,'Open'])/market_data.at[date,'Open'] > 0 else 1
-                    rew+=(market_data.at[date,'Close']-market_data.at[date,'Open'])/market_data.at[date,'Open']
+                    rew+= (market_data.at[date,'Close']-market_data.at[date,'Open'])/market_data.at[date,'Open']
+                    pos+= 1 if rew > 0 else 0
+                    neg+= 0 if rew > 0 else 1
                     doll+=(market_data.at[date,'Close']-market_data.at[date,'Open'])*50
                     cov+=1
                 elif (i['ensemble']==2):
-                    neg+= 0 if -(market_data.at[date,'Close']-market_data.at[date,'Open'])/market_data.at[date,'Open'] > 0 else 1
-                    pos+= 1 if -(market_data.at[date,'Close']-market_data.at[date,'Open'])/market_data.at[date,'Open'] > 0 else 0
                     rew+=-(market_data.at[date,'Close']-market_data.at[date,'Open'])/market_data.at[date,'Open']
+                    neg+= 0 if -rew > 0 else 1
+                    pos+= 1 if -rew > 0 else 0
                     cov+=1
                     doll+=-(market_data.at[date,'Close']-market_data.at[date,'Open'])*50
         
@@ -113,15 +113,15 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
     """Vẽ các biểu đồ metrics trong quá trình training"""
     pdf = PdfPages(result_file)
     num_plots = 11
-    plt.figure(figsize=(num_walks*8, num_plots*3))  # Tăng kích thước
+    plt.figure(figsize=((num_epochs/10)*(num_walks+1),num_plots*5))
     
     for i in range(1, num_walks+1):
         document = pd.read_csv(f"{walk_files}{i}.csv")
         
         # Accuracy
         plt.subplot(num_plots, num_walks, 0*num_walks + i)
-        plt.plot(document['Iteration'], document['trainAccuracy'], 'b', label='Train')
-        plt.plot(document['Iteration'], document['validationAccuracy'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['trainAccuracy'].tolist(), 'g', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['validationAccuracy'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -132,8 +132,8 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Coverage
         plt.subplot(num_plots, num_walks, 1*num_walks + i)
-        plt.plot(document['Iteration'], document['trainCoverage'], 'b', label='Train')
-        plt.plot(document['Iteration'], document['validationCoverage'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['trainCoverage'].tolist(), 'g', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['validationCoverage'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -144,7 +144,7 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Train Reward
         plt.subplot(num_plots, num_walks, 2*num_walks + i)
-        plt.plot(document['Iteration'], document['trainReward'], 'b', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['trainReward'].tolist(), 'b', label='Train')
         plt.xticks(range(0, num_epochs, 4))
         plt.axhline(y=0, color='k', linestyle='-')
         plt.legend()
@@ -153,7 +153,7 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Validation Reward
         plt.subplot(num_plots, num_walks, 3*num_walks + i)
-        plt.plot(document['Iteration'], document['validationReward'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['validationReward'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.axhline(y=0, color='k', linestyle='-')
         plt.legend()
@@ -162,8 +162,8 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Long %
         plt.subplot(num_plots, num_walks, 4*num_walks + i)
-        plt.plot(document['Iteration'], document['trainLong%'], 'b', label='Train')
-        plt.plot(document['Iteration'], document['validationLong%'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['trainLong%'].tolist(), 'b', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['validationLong%'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -174,8 +174,8 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Short %
         plt.subplot(num_plots, num_walks, 5*num_walks + i)
-        plt.plot(document['Iteration'], document['trainShort%'], 'b', label='Train')
-        plt.plot(document['Iteration'], document['validationShort%'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['trainShort%'].tolist(), 'b', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['validationShort%'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -186,8 +186,8 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Hold %
         plt.subplot(num_plots, num_walks, 6*num_walks + i)
-        plt.plot(document['Iteration'], [1-x for x in document['trainCoverage']], 'b', label='Train')
-        plt.plot(document['Iteration'], [1-x for x in document['validationCoverage']], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), [1-x for x in document['trainCoverage'].tolist()], 'b', label='Train')
+        plt.plot(document['Iteration'].tolist(), [1-x for x in document['validationCoverage'].tolist()], 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -198,8 +198,8 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Long Accuracy
         plt.subplot(num_plots, num_walks, 7*num_walks + i)
-        plt.plot(document['Iteration'], document['trainLongAcc'], 'b', label='Train')
-        plt.plot(document['Iteration'], document['validationLongAcc'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['trainLongAcc'].tolist(), 'b', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['validationLongAcc'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -210,8 +210,8 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Short Accuracy
         plt.subplot(num_plots, num_walks, 8*num_walks + i)
-        plt.plot(document['Iteration'], document['trainShortAcc'], 'b', label='Train')
-        plt.plot(document['Iteration'], document['validationShortAcc'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['trainShortAcc'].tolist(), 'b', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['validationShortAcc'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -222,8 +222,8 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Long Precision
         plt.subplot(num_plots, num_walks, 9*num_walks + i)
-        plt.plot(document['Iteration'], document['trainLongPrec'], 'b', label='Train')
-        plt.plot(document['Iteration'], document['validLongPrec'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['trainLongPrec'].tolist(), 'b', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['validLongPrec'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -234,8 +234,8 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
 
         # Short Precision
         plt.subplot(num_plots, num_walks, 10*num_walks + i)
-        plt.plot(document['Iteration'], document['trainShortPrec'], 'b', label='Train')
-        plt.plot(document['Iteration'], document['validShortPrec'], 'g', label='Validation')
+        plt.plot(document['Iteration'].tolist(), document['trainShortPrec'].tolist(), 'b', label='Train')
+        plt.plot(document['Iteration'].tolist(), document['validShortPrec'].tolist(), 'g', label='Validation')
         plt.xticks(range(0, num_epochs, 4))
         plt.yticks(np.arange(0, 1, step=0.1))
         plt.ylim(-0.05, 1.05)
@@ -244,8 +244,20 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
         plt.grid()
         plt.title('Short Precision')
 
-    plt.suptitle("Training Metrics", size=20, weight=3, ha='left', x=0.1, y=0.99)
-    plt.tight_layout(rect=[0, 0, 1, 0.97])  # Thêm dòng này
+    plt.suptitle("Esperimento SP500 5 (Only long):\n"
+            +"Target model update: 1e-1\n"
+            +"Model: 35 neurons single layer\n"
+            +"Memory-Window Length: 10000-1\n"
+            +"Train length: 5 Years\n"
+            +"Validation length: 6 Months\n"
+            +"Test lenght: 6 Months\n"
+            +"Starting period: 2010-01-01\n"
+            +"Other changes: Does only Long actions"
+            ,size=30
+            ,weight=3
+            ,ha='left'
+            ,x=0.1
+            ,y=0.99)
     pdf.savefig()
     pdf.close()
 
@@ -307,17 +319,17 @@ def combine_signals():
     
     output.close()
 
-def evaluate_model(num_walks, num_epochs, market, walk_files, ensemble_folder, result_folder):
+def evaluate_model(num_walks, num_epochs, market, walk_files, ensemble_folder, result_file):
     """Hàm chính để đánh giá và trực quan hóa kết quả"""
     # Vẽ biểu đồ ensemble results
     plot_ensemble_results(
         num_walks=num_walks,
         market=market,
         ensemble_folder=ensemble_folder,
-        result_file=f"{result_folder}/ensemble_results.pdf"
+        result_file=f"{result_file}_ensemble.pdf"
     )
 
-    # plot_training_metrics(num_walks=num_walks, 
-    #                       num_epochs=num_epochs, 
-    #                       walk_files=walk_files,
-    #                       result_file=f"{result_folder}/training_results.pdf")
+    plot_training_metrics(num_walks=num_walks, 
+                          num_epochs=num_epochs, 
+                          walk_files=walk_files,
+                          result_file=f"{result_file}_training.pdf")

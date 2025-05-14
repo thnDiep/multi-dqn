@@ -48,12 +48,13 @@ class DeepQTrading:
     #nbActions: number of decisions (0-Hold 1-Long 2-Short) 
     #nOutput is the number of walks. We are doing 5 walks.  
     #operationCost: Price for the transaction (we set they are free)
-    def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolder, resultFolder, market, custom_objects=None):
+    def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolder, resultFile, market, weights_file="q.weights", custom_objects=None):
         
         self.isOnlyShort=isOnlyShort
         self.ensembleFolder=ensembleFolder
-        self.resultFolder=resultFolder
+        self.resultFile=resultFile
         self.market = market
+        self.weights_file = weights_file
         
         #Define the policy, explorations, actions and model as received by parameters
         self.policy = EpsGreedyQPolicy()
@@ -79,9 +80,8 @@ class DeepQTrading:
         #Compile the agent with the adam optimizer and with the mean absolute error metric
         self.agent.compile(Adam(lr=1e-3), metrics=['mae'])
 
-        #Save the weights of the agents in the q.weights file
-        #Save random weights
-        self.agent.save_weights("q.weights", overwrite=True)
+        #Save the weights of the agents in the weights_file
+        self.agent.save_weights(self.weights_file, overwrite=True)
 
         #Define the current starting point as the initial date
         self.currentStartingPoint = begin
@@ -198,7 +198,7 @@ class DeepQTrading:
             self.agent.compile(Adam(lr=1e-3), metrics=['mae'])
             
             #Load the weights saved before in a random way if it is the first time
-            self.agent.load_weights("q.weights")
+            self.agent.load_weights(self.weights_file)
             
             ########################################TRAINING STAGE########################################################
             
@@ -262,7 +262,6 @@ class DeepQTrading:
                 
                 #there will be 100 iterations (epochs), or eps[1])
                 for i in range(0,eps[1]):
-                    
                     del(trainEnv)
 
                     #Define the training, validation and testing environments with their respective callbacks
@@ -359,12 +358,12 @@ class DeepQTrading:
         # self.model.save_weights(self.outputFile + "model.h5", overwrite=True)
 
         evaluate_model(
-            num_walks=24, # need to change later
+            num_walks=21, # need to change later
             num_epochs=self.explorations[0][1],
             market=self.market,
             walk_files=self.outputFileName,
             ensemble_folder=self.ensembleFolder,
-            result_folder=self.resultFolder
+            result_file=self.resultFile
         )
         
         print(f"Evaluation completed for {self.market}. Check the Output directory for results.")

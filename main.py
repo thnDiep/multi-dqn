@@ -84,13 +84,15 @@ if model_name not in ModelType.get_values():
     sys.exit(1)
 
 
-walk_dir = f"./Output/csv/walks/{market}/{model_name}/"
-ensemble_dir = f"./Output/ensemble/{market}/{model_name}/"
-result_dir = f"./Output/results/{market}/{model_name}/"
+walk_dir = f"./Output/csv/walks/{market}/{model_name}"
+ensemble_dir = f"./Output/ensemble/{market}/{model_name}"
+result_dir = f"./Output/results/{market}"
+model_dir = f"./Output/models/{market}"
 
 os.makedirs(walk_dir, exist_ok=True)
 os.makedirs(ensemble_dir, exist_ok=True)
 os.makedirs(result_dir, exist_ok=True)
+os.makedirs(model_dir, exist_ok=True)
 
 #Define the DeepQTrading class with the following parameters:
 #explorations: 0.2 operations are random, and 100 epochs.
@@ -107,20 +109,21 @@ model, custom_objects = build_model(model_name)
 dqt = DeepQTrading(
     model=model,
     explorations=[(0.2,1)],
-    trainSize=datetime.timedelta(days=360*5),
-    validationSize=datetime.timedelta(days=30*6),
-    testSize=datetime.timedelta(days=30*6),
+    trainSize=datetime.timedelta(days=2115),
+    validationSize=datetime.timedelta(days=264),
+    testSize=datetime.timedelta(days=264),
     outputFile=f"{walk_dir}/walks",
-    begin=datetime.datetime(2001,1,1,0,0,0,0),
-    end=datetime.datetime(2019,2,28,0,0,0,0),
+    begin=datetime.datetime(2007,9,18,0,0,0,0),
+    end=datetime.datetime(2017,5,29,0,0,0,0),
     nbActions=nb_actions,
     isOnlyShort=isOnlyShort,
     ensembleFolder=ensemble_dir,
-    resultFolder=result_dir,
+    resultFile=f"{result_dir}/{model_name}",
     market=market,
+    weights_file=f"{model_dir}/q_{model_name}.weights",
     custom_objects=custom_objects
     )
 
 dqt.run()
 
-dqt.end()
+# dqt.end()

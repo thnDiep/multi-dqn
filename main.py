@@ -38,6 +38,7 @@ from rl.memory import SequentialMemory
 from rl.policy import EpsGreedyQPolicy
 
 from attention_network import build_model, ModelType
+from market_config import get_market_config, MARKET_CONFIG
 
 #Library used for showing the exception in the case of error 
 import sys
@@ -51,13 +52,10 @@ import sys
 #Let's capture the starting time and send it to the destination in order to tell that the experiment started 
 startingTime=datetime.datetime.now()
 
-# Danh sách các thị trường và model được hỗ trợ
-SUPPORTED_MARKETS = ["dax", "sp500"]
-
-# Kiểm tra tham số đầu vào
+# Check input parameters
 if len(sys.argv) < 5:
     print("Usage: python main.py <numberOfActions> <isOnlyShort> <market> <modelName>")
-    print(f"Supported markets: {', '.join(SUPPORTED_MARKETS)}")
+    print(f"Supported markets: {', '.join(MARKET_CONFIG.keys())}")
     print(f"Supported models: {', '.join(ModelType.get_values())}")
     sys.exit(1)
 
@@ -72,10 +70,10 @@ isOnlyShort = sys.argv[2]==1
 market = sys.argv[3]
 model_name = sys.argv[4]
 
-# Kiểm tra thị trường và model có hợp lệ không
-if market not in SUPPORTED_MARKETS:
+# Check if market and model are valid
+if market not in MARKET_CONFIG:
     print(f"Error: Market '{market}' is not supported")
-    print(f"Supported markets: {', '.join(SUPPORTED_MARKETS)}")
+    print(f"Supported markets: {', '.join(MARKET_CONFIG.keys())}")
     sys.exit(1)
 
 if model_name not in ModelType.get_values():
@@ -83,6 +81,8 @@ if model_name not in ModelType.get_values():
     print(f"Supported models: {', '.join(ModelType.get_values())}")
     sys.exit(1)
 
+# Get market configuration
+market_config = get_market_config(market)
 
 walk_dir = f"./Output/csv/walks/{market}/{model_name}"
 ensemble_dir = f"./Output/ensemble/{market}/{model_name}"
@@ -108,13 +108,13 @@ os.makedirs(model_dir, exist_ok=True)
 model, custom_objects = build_model(model_name)
 dqt = DeepQTrading(
     model=model,
-    explorations=[(0.2,1)],
-    trainSize=datetime.timedelta(days=2115),
-    validationSize=datetime.timedelta(days=264),
-    testSize=datetime.timedelta(days=264),
+    explorations=[(0.2,100)],
+    trainSize=datetime.timedelta(days=360*5),
+    validationSize=datetime.timedelta(days=30*6),
+    testSize=datetime.timedelta(days=30*6),
     outputFile=f"{walk_dir}/walks",
-    begin=datetime.datetime(2007,9,18,0,0,0,0),
-    end=datetime.datetime(2017,5,29,0,0,0,0),
+    begin=market_config["start_date"],
+    end=market_config["end_date"],
     nbActions=nb_actions,
     isOnlyShort=isOnlyShort,
     ensembleFolder=ensemble_dir,
@@ -124,6 +124,6 @@ dqt = DeepQTrading(
     custom_objects=custom_objects
     )
 
-dqt.run()
+# dqt.run()
 
-# dqt.end()
+dqt.end()

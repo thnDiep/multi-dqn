@@ -3,9 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import os
+from market_config import get_market_config
 
 def full_ensemble(df):
-    """Tính toán ensemble với 100% đồng thuận"""
+    """Calculate ensemble with 100% consensus"""
     m1 = df.eq(1).all(axis=1)
     m2 = df.eq(2).all(axis=1)
     local_df = df.copy()
@@ -14,13 +15,13 @@ def full_ensemble(df):
     return local_df
 
 def perc_ensemble(df, thr=0.7):
-    """Tính toán ensemble với ngưỡng đồng thuận nhất định"""
+    """Calculate ensemble with specific consensus threshold"""
     c1 = (df.eq(1).sum(1) / df.shape[1]).gt(thr)
     c2 = (df.eq(2).sum(1) / df.shape[1]).gt(thr)
     return pd.DataFrame(np.select([c1, c2], [1, -1], 0), index=df.index, columns=['ensemble'])
 
 def generate_ensemble_decisions(num_walks, ensemble_folder, result_file):
-    """Tạo quyết định ensemble từ các walk khác nhau"""
+    """Generate ensemble decisions from different walks"""
     fulldf = None
     
     for j in range(num_walks):
@@ -35,14 +36,14 @@ def generate_ensemble_decisions(num_walks, ensemble_folder, result_file):
 
 def ensemble(numWalks, perc, type, numDel, market, ensemble_folder):
     """
-    Tính toán các metrics cho ensemble
+    Calculate metrics for ensemble
     
     Args:
-        numWalks: Số lượng walk
-        perc: Ngưỡng đồng thuận (0: 100%, 0.9: 90%, etc)
-        type: Loại dữ liệu ("valid" hoặc "test")
-        numDel: Số iteration cần xóa
-        market: Tên thị trường (default: "dax")
+        numWalks: Number of walks
+        perc: Consensus threshold (0: 100%, 0.9: 90%, etc)
+        type: Data type ("valid" or "test")
+        numDel: Number of iterations to delete
+        market: Market name (default: "dax")
     """
     dollSum=0
     rewSum=0
@@ -54,7 +55,7 @@ def ensemble(numWalks, perc, type, numDel, market, ensemble_folder):
     values=[]
     columns = ["Iteration","Reward%","#Wins","#Losses","Dollars","Coverage","Accuracy"]
     
-    # Đọc dữ liệu thị trường với tên thị trường được truyền vào
+    # Read market data with market name passed in
     market_data = pd.read_csv(f"./datasets/{market}Day.csv", index_col='Date')
     
     for j in range(0, numWalks):
@@ -110,7 +111,7 @@ def ensemble(numWalks, perc, type, numDel, market, ensemble_folder):
     return values, columns
 
 def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
-    """Vẽ các biểu đồ metrics trong quá trình training"""
+    """Plot training metrics charts"""
     pdf = PdfPages(result_file)
     num_plots = 11
     plt.figure(figsize=((num_epochs/10)*(num_walks+1),num_plots*5))
@@ -244,7 +245,7 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
         plt.grid()
         plt.title('Short Precision')
 
-    plt.suptitle("Esperimento SP500 5 (Only long):\n"
+    plt.suptitle("SP500 Experiment 5 (Only long):\n"
             +"Target model update: 1e-1\n"
             +"Model: 35 neurons single layer\n"
             +"Memory-Window Length: 10000-1\n"
@@ -262,7 +263,7 @@ def plot_training_metrics(num_walks, num_epochs, walk_files, result_file):
     pdf.close()
 
 def plot_ensemble_results(num_walks, market, ensemble_folder, result_file):
-    """Vẽ các bảng kết quả ensemble với các ngưỡng khác nhau"""
+    """Plot ensemble results tables with different thresholds"""
     pdf = PdfPages(result_file)
     
     thresholds = [0, 0.9, 0.8, 0.7, 0.6]
@@ -295,7 +296,7 @@ def plot_ensemble_results(num_walks, market, ensemble_folder, result_file):
     pdf.close()
 
 def combine_signals():
-    """Kết hợp các tín hiệu từ long và short để tạo quyết định cuối cùng"""
+    """Combine signals from long and short to create final decision"""
     long = [[],[]]
     short = [[],[]]
 
@@ -307,7 +308,7 @@ def combine_signals():
     short[0] = shorts.ix[:,"Date"].tolist()
     short[1] = shorts.ix[:,"ensemble"].tolist()
 
-    # Tạo thư mục results nếu chưa tồn tại
+    # Create results directory if it doesn't exist
     os.makedirs("./Output/results", exist_ok=True)
     
     output = open("./Output/results/finalEnsemble.csv", "w+")
@@ -319,17 +320,17 @@ def combine_signals():
     
     output.close()
 
-def evaluate_model(num_walks, num_epochs, market, walk_files, ensemble_folder, result_file):
-    """Hàm chính để đánh giá và trực quan hóa kết quả"""
-    # Vẽ biểu đồ ensemble results
+def evaluate_model(num_epochs, market, walk_files, ensemble_folder, result_file):
+    """Main function to evaluate and visualize results"""
+    # Plot ensemble results
     plot_ensemble_results(
-        num_walks=num_walks,
+        num_walks=get_market_config(market)["num_walks"],
         market=market,
         ensemble_folder=ensemble_folder,
         result_file=f"{result_file}_ensemble.pdf"
     )
 
-    plot_training_metrics(num_walks=num_walks, 
+    plot_training_metrics(num_walks=get_market_config(market)["num_walks"], 
                           num_epochs=num_epochs, 
                           walk_files=walk_files,
                           result_file=f"{result_file}_training.pdf")

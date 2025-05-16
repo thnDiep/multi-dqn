@@ -49,7 +49,6 @@ class DeepQTrading:
     #nOutput is the number of walks. We are doing 5 walks.  
     #operationCost: Price for the transaction (we set they are free)
     def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolder, resultFile, market, weights_file="q.weights", custom_objects=None):
-        
         self.isOnlyShort=isOnlyShort
         self.ensembleFolder=ensembleFolder
         self.resultFile=resultFile
@@ -358,7 +357,6 @@ class DeepQTrading:
         # self.model.save_weights(self.outputFile + "model.h5", overwrite=True)
 
         evaluate_model(
-            num_walks=21, # need to change later
             num_epochs=self.explorations[0][1],
             market=self.market,
             walk_files=self.outputFileName,

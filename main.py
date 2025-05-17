@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore")
 import os
 import numpy as np
 import tensorflow as tf
+import time  # Thêm import time
 
 #This is the class call for the Agent which will perform the experiment
 from deepQTrading import DeepQTrading
@@ -49,8 +50,7 @@ import sys
 #config.gpu_options.per_process_gpu_memory_fraction = 0.3
 #set_session(tf.Session(config=config))
 
-#Let's capture the starting time and send it to the destination in order to tell that the experiment started 
-startingTime=datetime.datetime.now()
+start_time = time.time()  # Thêm đo thời gian bắt đầu
 
 # Check input parameters
 if len(sys.argv) < 5:
@@ -126,4 +126,9 @@ dqt = DeepQTrading(
 
 # dqt.run()
 
+end_time = time.time()
+training_time = end_time - start_time
+print(f"\nThời gian training: {training_time:.2f} giây ({training_time/60:.2f} phút)")
+
 dqt.end()
+

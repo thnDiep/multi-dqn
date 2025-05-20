@@ -86,13 +86,16 @@ market_config = get_market_config(market)
 
 walk_dir = f"./Output/csv/walks/{market}/{model_name}"
 ensemble_dir = f"./Output/ensemble/{market}/{model_name}"
+test_only_ensemble_dir = f"./Output/ensemble/{market}/{model_name}/test_only"
 result_dir = f"./Output/results/{market}"
 model_dir = f"./Output/models/{market}"
+q_values_dir = f"./Output/q_values/{market}/{model_name}"
 
 os.makedirs(walk_dir, exist_ok=True)
 os.makedirs(ensemble_dir, exist_ok=True)
 os.makedirs(result_dir, exist_ok=True)
 os.makedirs(model_dir, exist_ok=True)
+os.makedirs(test_only_ensemble_dir, exist_ok=True)
 
 #Define the DeepQTrading class with the following parameters:
 #explorations: 0.2 operations are random, and 100 epochs.
@@ -108,7 +111,7 @@ os.makedirs(model_dir, exist_ok=True)
 model, custom_objects = build_model(model_name)
 dqt = DeepQTrading(
     model=model,
-    explorations=[(0.2,100)],
+    explorations=[(0.2,3)],
     trainSize=datetime.timedelta(days=360*5),
     validationSize=datetime.timedelta(days=30*6),
     testSize=datetime.timedelta(days=30*6),
@@ -120,11 +123,13 @@ dqt = DeepQTrading(
     ensembleFolder=ensemble_dir,
     resultFile=f"{result_dir}/{model_name}",
     market=market,
-    weights_file=f"{model_dir}/q_{model_name}.weights",
-    custom_objects=custom_objects
+    weights_file=f"{model_dir}/q-{market}-{model_name}.weights",
+    custom_objects=custom_objects,
+    q_values_dir=q_values_dir,
+    # skip_training=True,
     )
 
-# dqt.run()
+dqt.run()
 
 end_time = time.time()
 training_time = end_time - start_time

@@ -16,47 +16,55 @@ The stock market forecasting is one of the most challenging application of machi
 
 ## Description
 
-#### These files are needed to run the main code:
+#### Core files:
 
--   **main.py**: the entry point of the application;
--   **deepQTrading.py**: used to organize our data in walks and set up the agents;
--   **spEnv.py**: the environment used for the agents;
--   **mergedDataStructure.py**: the data structure we use to instantiate the multi-resolution feature vector;
--   **callback.py**: a module used to log and trace the results.
-
-#### Other tools:
-
--   **ensemble.py**: can be used to generate the threshold ensemble from the main agents;
--   **splitEnsemble.py**: can be used to generate the final ensemble for the LONG+SHORT agent (after running ensemble.py).
-
-If you want to adapt the code and use it for more markets, you can use the file **utils/parserWeek.py**, to create a weekly resolution dataset.<br>
-On the other hand, the file **utils/plotResults.py** can be used to generate a .pdf containing several plots, useful to get information on the testing phase of the algorithm.
+-   **main.py**: Entry point of the application
+-   **deepQTrading.py**: Organizes data and sets up the agents
+-   **spEnv.py**: Environment for the agents
+-   **mergedDataStructure.py**: Multi-timeframe data structure
+-   **callback.py**: Module for logging and tracking results
+-   **attention_network.py**: Module containing attention models:
+    + GlobalFeatureAttention: Global attention on all features
+    + LocalFeatureAttention: Local attention on each feature within timeframes
+    + TimeFrameAttention: Attention on each timeframe
 
 ## Requirements
 
--   Python 3
--   Tensorflow (1.14): `pip install tensorflow==1.14`
--   Keras: `pip install keras`
--   Keras-RL: `pip install keras-rl`
--   OpenAI Gym: `pip install gym`
--   Pandas: `pip install pandas`
+-   Python 3.6
+-   Tensorflow 1.14.0: `pip install tensorflow==1.14.0`
+-   Keras 2.3.1: `pip install keras==2.3.1`
+-   Keras-RL 0.4.2: `pip install keras-rl==0.4.2`
+-   OpenAI Gym 0.26.2: `pip install gym==0.26.2`
+-   Pandas 0.25.3: `pip install pandas==0.25.3`
+-   NumPy 1.19.5: `pip install numpy==1.19.5`
 
 ## Usage
 
-The code needs three positional parameters to be correctly executed:<br>
-`python main.py <numberOfActions> <isOnlyShort> <market> <modelName>`<br>
-<br>
+The code requires 4 parameters to run:
+`python main.py <numberOfActions> <isOnlyShort> <market> <modelName>`
 
--   To run the **FULL** agent you need to run: `python main.py 3 0 ensembleFolder`
--   To run the **ONLY LONG** agent you need to run: `python main.py 2 0 ensembleFolder`
--   To run the **ONLY SHORT** agent you need to run: `python main.py 2 1 ensembleFolder`
+Where:
+- `numberOfActions`: Number of actions (default: 3 for FULL agent)
+- `isOnlyShort`: 0 for FULL agent (default)
+- `market`: Market name (e.g., dax)
+- `modelName`: Model name (original, global_feature_atn, local_feature_atn, time_frame_atn)
 
-where the paramenter **ensembleFolder** is used to set the name of the folder in which you'll get your results.
+Note: This project only uses FULL agent, so `numberOfActions` is always 3 and `isOnlyShort` is always 0.
 
-(UPDATED)
-`python main.py <numberOfActions> <isOnlyShort> <market> <modelName>`<br>
-<br>
-
--   To run the **FULL** agent you need to run: `python -W ignore main.py 3 0 dax original`
--   To run the **FULL** agent you need to run: `python -W ignore main.py 3 0 dax simple_atn`
--   To run the **FULL** agent you need to run: `python -W ignore main.py 3 0 dax time_frame_atn`
+Examples:
+- Run with original model:
+  ```
+  python -W ignore main.py 3 0 dax original
+  ```
+- Run with GlobalFeatureAttention:
+  ```
+  python -W ignore main.py 3 0 dax global_feature_atn
+  ```
+- Run with LocalFeatureAttention:
+  ```
+  python -W ignore main.py 3 0 dax local_feature_atn
+  ```
+- Run with TimeFrameAttention:
+  ```
+  python -W ignore main.py 3 0 dax time_frame_atn
+  ```

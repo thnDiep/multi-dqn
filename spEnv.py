@@ -198,16 +198,6 @@ class SpEnv(gym.Env):
         return self.getObservation(self.history[self.currentObservation]['Date'])
 
 
-    # def get_label_attention(self, date):
-        
-    def trainingAttention(self, date):
-        weights = []
-
-
-        return weights
-        
-
-
     def getObservation(self, date):
 
         #Get the dayly information and week information
@@ -241,35 +231,5 @@ class SpEnv(gym.Env):
         #Resets the episode to 1
         self.episode=1
 
-
-    def get_all_data_for_attention(self):
-        all_data = []
-        for i in range(self.observationWindow, self.limit):
-            # Lấy dữ liệu 40 giờ gần nhất
-            hour_data = list(
-                map(
-                    lambda x: (x["Close"] - x["Open"]) / x["Open"],
-                    self.history[i - self.observationWindow:i]
-                )
-            )
-
-            # Lấy dữ liệu 20 ngày gần nhất
-            day_data = list(
-                map(
-                    lambda x: (x["Close"] - x["Open"]) / x["Open"],
-                    self.dayData.get(self.history[i]['Date'])
-                )
-            )
-
-            # Lấy dữ liệu 8 tuần gần nhất
-            week_data = list(
-                map(
-                    lambda x: (x["Close"] - x["Open"]) / x["Open"],
-                    self.weekData.get(self.history[i]['Date'])
-                )
-            )
-
-            # Thêm sample vào danh sách
-            all_data.append((hour_data, day_data, week_data))
-
-        return all_data
+    def get_current_date(self):
+        return self.history[self.currentObservation]['Date']

@@ -2,6 +2,7 @@
 Output/
 .venv/
 .venv38/
+backup/
 
 # Don't track this files #
 telegramSettings.py

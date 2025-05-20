@@ -5,6 +5,7 @@ from spEnv import SpEnv
 
 #Callback used to print the results at each episode
 from callback import ValidationCallback
+from QValueCallback import QValueCallback
 
 #Keras library for the NN considered
 from keras.models import Sequential
@@ -48,13 +49,15 @@ class DeepQTrading:
     #nbActions: number of decisions (0-Hold 1-Long 2-Short) 
     #nOutput is the number of walks. We are doing 5 walks.  
     #operationCost: Price for the transaction (we set they are free)
-    def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolder, resultFile, market, weights_file="q.weights", custom_objects=None):
+    def __init__(self, model, explorations, trainSize, validationSize, testSize, outputFile, begin, end, nbActions, isOnlyShort, ensembleFolder, resultFile, market, weights_file="q.weights", custom_objects=None, skip_training=False, q_values_dir=None):
         self.isOnlyShort=isOnlyShort
         self.ensembleFolder=ensembleFolder
         self.resultFile=resultFile
         self.market = market
         self.weights_file = weights_file
-        
+        self.skip_training = skip_training
+        self.q_values_dir = q_values_dir
+
         #Define the policy, explorations, actions and model as received by parameters
         self.policy = EpsGreedyQPolicy()
         self.explorations=explorations
@@ -79,8 +82,13 @@ class DeepQTrading:
         #Compile the agent with the adam optimizer and with the mean absolute error metric
         self.agent.compile(Adam(lr=1e-3), metrics=['mae'])
 
-        #Save the weights of the agents in the weights_file
-        self.agent.save_weights(self.weights_file, overwrite=True)
+        self.agent.save_weights("q.weights", overwrite=True)
+        
+        # If test only, load trained weights
+        if self.skip_training:
+            self.agent.load_weights(self.weights_file)
+        else:
+            self.agent.save_weights(self.weights_file, overwrite=True)
 
         #Define the current starting point as the initial date
         self.currentStartingPoint = begin
@@ -122,6 +130,10 @@ class DeepQTrading:
         self.trainer=ValidationCallback()
         self.validator=ValidationCallback()
         self.tester=ValidationCallback()
+        # Add QValue callbacks with separate output_dir for each phase and walk
+        self.train_q_callback = QValueCallback(output_dir=self.q_values_dir, phase='train')
+        self.valid_q_callback = QValueCallback(output_dir=self.q_values_dir, phase='valid')
+        self.test_q_callback = QValueCallback(output_dir=self.q_values_dir, phase='test')
         self.outputFileName=outputFile
         self.numWalk = 0
 
@@ -139,43 +151,55 @@ class DeepQTrading:
             #Iteration is the current walk
             iteration+=1
 
-            #Initiate the output file
-            self.outputFile=open(self.outputFileName+str(iteration+1)+".csv", "w+")
-            #write the first row of the csv
-            self.outputFile.write(
-                "Iteration,"+
-                "trainAccuracy,"+
-                "trainCoverage,"+
-                "trainReward,"+
-                "trainLong%,"+
-                "trainShort%,"+
-                "trainLongAcc,"+
-                "trainShortAcc,"+
-                "trainLongPrec,"+
-                "trainShortPrec,"+
+            #Initiate the output file với tên file khác nhau cho test only
+            if self.skip_training:
+                self.outputFile=open(self.outputFileName+"_test_only_"+str(iteration+1)+".csv", "w+")
+                #write the first row of the csvs
+                self.outputFile.write(
+                    "testAccuracy,"+
+                    "testCoverage,"+
+                    "testReward,"+
+                    "testLong%,"+
+                    "testShort%,"+
+                    "testLongAcc,"+
+                    "testShortAcc,"+
+                    "testLongPrec,"+
+                    "testShortPrec\n")
+            else:
+                self.outputFile=open(self.outputFileName+str(iteration+1)+".csv", "w+")
+                #write the first row of the csv
+                self.outputFile.write(
+                    "Iteration,"+
+                    "trainAccuracy,"+
+                    "trainCoverage,"+
+                    "trainReward,"+
+                    "trainLong%,"+
+                    "trainShort%,"+
+                    "trainLongAcc,"+
+                    "trainShortAcc,"+
+                    "trainLongPrec,"+
+                    "trainShortPrec,"+
 
-                "validationAccuracy,"+
-                "validationCoverage,"+
-                "validationReward,"+
-                "validationLong%,"+
-                "validationShort%,"+
-                "validationLongAcc,"+
-                "validationShortAcc,"+
-                "validLongPrec,"+
-                "validShortPrec,"+
-                
-                "testAccuracy,"+
-                "testCoverage,"+
-                "testReward,"+
-                "testLong%,"+
-                "testShort%,"+
-                "testLongAcc,"+
-                "testShortAcc,"+
-                "testLongPrec,"+
-                "testShortPrec\n")
+                    "validationAccuracy,"+
+                    "validationCoverage,"+
+                    "validationReward,"+
+                    "validationLong%,"+
+                    "validationShort%,"+
+                    "validationLongAcc,"+
+                    "validationShortAcc,"+
+                    "validLongPrec,"+
+                    "validShortPrec,"+
+                    
+                    "testAccuracy,"+
+                    "testCoverage,"+
+                    "testReward,"+
+                    "testLong%,"+
+                    "testShort%,"+
+                    "testLongAcc,"+
+                    "testShortAcc,"+
+                    "testLongPrec,"+
+                    "testShortPrec\n")
 
-
-            
             #Empty the memory and agent
             del(self.memory)
             del(self.agent)
@@ -247,94 +271,140 @@ class DeepQTrading:
 
             #Separate the Validation and testing data according to the limits found before
             #Prepare the training and validation files for saving them later 
+            ensambleTrain=pd.DataFrame(index=self.dates[trainMinLimit:trainMaxLimit].ix[:,'Date'].drop_duplicates().tolist())
             ensambleValid=pd.DataFrame(index=self.dates[validMinLimit:validMaxLimit].ix[:,'Date'].drop_duplicates().tolist())
             ensambleTest=pd.DataFrame(index=self.dates[testMinLimit:testMaxLimit].ix[:,'Date'].drop_duplicates().tolist())
             
             #Put the name of the index for validation and testing
+            ensambleTrain.index.name='Date'
             ensambleValid.index.name='Date'
             ensambleTest.index.name='Date'
             
-            #Explorations are epochs considered, or how many times the agent will play the game.  
-            for eps in self.explorations:
-                #policy will be 0.2, so the randomness of predictions (actions) will happen with 20% of probability 
-                self.policy.eps = eps[0]
+            # Reset QValue callbacks khi bắt đầu walk mới
+            self.train_q_callback.reset(iteration, self.dates[trainMinLimit:trainMaxLimit].ix[:,'Date'].drop_duplicates().tolist())
+            self.valid_q_callback.reset(iteration, self.dates[validMinLimit:validMaxLimit].ix[:,'Date'].drop_duplicates().tolist())
+            self.test_q_callback.reset(iteration, self.dates[testMinLimit:testMaxLimit].ix[:,'Date'].drop_duplicates().tolist())
+
+            if self.skip_training: # Test only for the last agent
+                del(testEnv)
+                testEnv=SpEnv(self.market, operationCost=self.operationCost,minLimit=testMinLimit,maxLimit=testMaxLimit,callback=self.tester,isOnlyShort=self.isOnlyShort,ensamble=ensambleTest,columnName="test_result")
+                #Reset the callback
+                self.tester.reset()
+                #Reset the testing environment
+                testEnv.resetEnv()
+                # Set environment cho QValueCallback
+                self.test_q_callback.set_env(testEnv)
+                #Test the agent on testing data
+                self.agent.test(testEnv,nb_episodes=floor(self.testSize.days-self.testSize.days*0.2),visualize=False,verbose=1,callbacks=[self.test_q_callback])
+                #Get the info from the testing callback
+                (_,testCoverage,testAccuracy,testReward,testLongPerc,testShortPerc,testLongAcc,testShortAcc,testLongPrec,testShortPrec)=self.tester.getInfo()
+                #Print callback values on the screen
+                print("TEST:  acc: " + str(testAccuracy)+ " cov: " + str(testCoverage)+ " rew: " + str(testReward))
+                print(" ")
                 
-                #there will be 100 iterations (epochs), or eps[1])
-                for i in range(0,eps[1]):
-                    del(trainEnv)
-
-                    #Define the training, validation and testing environments with their respective callbacks
-                    trainEnv = SpEnv(self.market, operationCost=self.operationCost,minLimit=trainMinLimit,maxLimit=trainMaxLimit,callback=self.trainer,isOnlyShort=self.isOnlyShort)
-                    del(validEnv)
-                    validEnv=SpEnv(self.market, operationCost=self.operationCost,minLimit=validMinLimit,maxLimit=validMaxLimit,callback=self.validator,isOnlyShort=self.isOnlyShort,ensamble=ensambleValid,columnName="iteration"+str(i))
-                    del(testEnv)
-                    testEnv=SpEnv(self.market, operationCost=self.operationCost,minLimit=testMinLimit,maxLimit=testMaxLimit,callback=self.tester,isOnlyShort=self.isOnlyShort,ensamble=ensambleTest,columnName="iteration"+str(i))
-
-                    #Reset the callback
-                    self.trainer.reset()
-                    self.validator.reset()
-                    self.tester.reset()
-
-                    #Reset the training environment
-                    trainEnv.resetEnv()
-                    #Train the agent
-                    self.agent.fit(trainEnv,nb_steps=floor(self.trainSize.days-self.trainSize.days*0.2),visualize=False,verbose=0)
-                    #Get the info from the train callback
-                    (_,trainCoverage,trainAccuracy,trainReward,trainLongPerc,trainShortPerc,trainLongAcc,trainShortAcc,trainLongPrec,trainShortPrec)=self.trainer.getInfo()
-                    #Print Callback values on the screen
-                    print(str(i) + " TRAIN:  acc: " + str(trainAccuracy)+ " cov: " + str(trainCoverage)+ " rew: " + str(trainReward))
-
-                    #Reset the validation environment
-                    validEnv.resetEnv()
-                    #Test the agent on validation data
-                    self.agent.test(validEnv,nb_episodes=floor(self.validationSize.days-self.validationSize.days*0.2),visualize=False,verbose=0)
-                    #Get the info from the validation callback
-                    (_,validCoverage,validAccuracy,validReward,validLongPerc,validShortPerc,validLongAcc,validShortAcc,validLongPrec,validShortPrec)=self.validator.getInfo()
-                    #Print callback values on the screen
-                    print(str(i) + " VALID:  acc: " + str(validAccuracy)+ " cov: " + str(validCoverage)+ " rew: " + str(validReward))
-
-                    #Reset the testing environment
-                    testEnv.resetEnv()
-                    #Test the agent on testing data
-                    self.agent.test(testEnv,nb_episodes=floor(self.validationSize.days-self.validationSize.days*0.2),visualize=False,verbose=0)
-                    #Get the info from the testing callback
-                    (_,testCoverage,testAccuracy,testReward,testLongPerc,testShortPerc,testLongAcc,testShortAcc,testLongPrec,testShortPrec)=self.tester.getInfo()
-                    #Print callback values on the screen
-                    print(str(i) + " TEST:  acc: " + str(testAccuracy)+ " cov: " + str(testCoverage)+ " rew: " + str(testReward))
-                    print(" ")
+                #write the walk data on the text file
+                self.outputFile.write(
+                    str(testAccuracy)+","+
+                    str(testCoverage)+","+
+                    str(testReward)+","+
+                    str(testLongPerc)+","+
+                    str(testShortPerc)+","+
+                    str(testLongAcc)+","+
+                    str(testShortAcc)+","+
+                    str(testLongPrec)+","+
+                    str(testShortPrec)+"\n")
+            else:
+                #Explorations are epochs considered, or how many times the agent will play the game.  
+                for eps in self.explorations:
+                    #policy will be 0.2, so the randomness of predictions (actions) will happen with 20% of probability 
+                    self.policy.eps = eps[0]
                     
-                    #write the walk data on the text file
-                    self.outputFile.write(
-                        str(i)+","+
-                        str(trainAccuracy)+","+
-                        str(trainCoverage)+","+
-                        str(trainReward)+","+
-                        str(trainLongPerc)+","+
-                        str(trainShortPerc)+","+
-                        str(trainLongAcc)+","+
-                        str(trainShortAcc)+","+
-                        str(trainLongPrec)+","+
-                        str(trainShortPrec)+","+
+                    #there will be 100 iterations (epochs), or eps[1])
+                    for i in range(0,eps[1]):
+                        # Set epoch number cho callbacks
+                        self.train_q_callback.set_epoch(i)
+                        self.valid_q_callback.set_epoch(i)
+                        self.test_q_callback.set_epoch(i)
                         
-                        str(validAccuracy)+","+
-                        str(validCoverage)+","+
-                        str(validReward)+","+
-                        str(validLongPerc)+","+
-                        str(validShortPerc)+","+
-                        str(validLongAcc)+","+
-                        str(validShortAcc)+","+
-                        str(validLongPrec)+","+
-                        str(validShortPrec)+","+
+                        del(trainEnv)
+                        #Define the training environment with its callback
+                        trainEnv = SpEnv(self.market, operationCost=self.operationCost,minLimit=trainMinLimit,maxLimit=trainMaxLimit,callback=self.trainer,isOnlyShort=self.isOnlyShort,ensamble=ensambleTrain,columnName="iteration"+str(i))
+                        #Reset the callback
+                        self.trainer.reset()
+                        # Set environment cho QValueCallback
+                        self.train_q_callback.set_env(trainEnv)
+                        #Reset the training environment
+                        trainEnv.resetEnv()
+                        #Train the agent
+                        self.agent.fit(trainEnv,nb_steps=floor(self.trainSize.days-self.trainSize.days*0.2),visualize=False,verbose=0,callbacks=[self.train_q_callback])
+                        #Get the info from the train callback
+                        (_,trainCoverage,trainAccuracy,trainReward,trainLongPerc,trainShortPerc,trainLongAcc,trainShortAcc,trainLongPrec,trainShortPrec)=self.trainer.getInfo()
+                        #Print Callback values on the screen
+                        print(str(i) + " TRAIN:  acc: " + str(trainAccuracy)+ " cov: " + str(trainCoverage)+ " rew: " + str(trainReward))
+
+                        del(validEnv)
+                        validEnv=SpEnv(self.market, operationCost=self.operationCost,minLimit=validMinLimit,maxLimit=validMaxLimit,callback=self.validator,isOnlyShort=self.isOnlyShort,ensamble=ensambleValid,columnName="iteration"+str(i))
+                        #Reset the callback
+                        self.validator.reset()
+                        # Set environment cho QValueCallback
+                        self.valid_q_callback.set_env(validEnv)
+                        #Reset the validation environment
+                        validEnv.resetEnv()
+                        #Test the agent on validation data
+                        self.agent.test(validEnv,nb_episodes=floor(self.validationSize.days-self.validationSize.days*0.2),visualize=False,verbose=0,callbacks=[self.valid_q_callback])
+                        #Get the info from the validation callback
+                        (_,validCoverage,validAccuracy,validReward,validLongPerc,validShortPerc,validLongAcc,validShortAcc,validLongPrec,validShortPrec)=self.validator.getInfo()
+                        #Print callback values on the screen
+                        print(str(i) + " VALID:  acc: " + str(validAccuracy)+ " cov: " + str(validCoverage)+ " rew: " + str(validReward))
+
+                        del(testEnv)
+                        testEnv=SpEnv(self.market, operationCost=self.operationCost,minLimit=testMinLimit,maxLimit=testMaxLimit,callback=self.tester,isOnlyShort=self.isOnlyShort,ensamble=ensambleTest,columnName="iteration"+str(i))
+                        #Reset the callback
+                        self.tester.reset()
+                        # Set environment cho QValueCallback
+                        self.test_q_callback.set_env(testEnv)
+                        #Reset the testing environment
+                        testEnv.resetEnv()
+                        #Test the agent on testing data
+                        self.agent.test(testEnv,nb_episodes=floor(self.testSize.days-self.testSize.days*0.2),visualize=False,verbose=0,callbacks=[self.test_q_callback])
+                        #Get the info from the testing callback
+                        (_,testCoverage,testAccuracy,testReward,testLongPerc,testShortPerc,testLongAcc,testShortAcc,testLongPrec,testShortPrec)=self.tester.getInfo()
+                        #Print callback values on the screen
+                        print(str(i) + " TEST:  acc: " + str(testAccuracy)+ " cov: " + str(testCoverage)+ " rew: " + str(testReward))
+                        print(" ")
                         
-                        str(testAccuracy)+","+
-                        str(testCoverage)+","+
-                        str(testReward)+","+
-                        str(testLongPerc)+","+
-                        str(testShortPerc)+","+
-                        str(testLongAcc)+","+
-                        str(testShortAcc)+","+
-                        str(testLongPrec)+","+
-                        str(testShortPrec)+"\n")
+                        #write the walk data on the text file
+                        self.outputFile.write(
+                            str(i)+","+
+                            str(trainAccuracy)+","+
+                            str(trainCoverage)+","+
+                            str(trainReward)+","+
+                            str(trainLongPerc)+","+
+                            str(trainShortPerc)+","+
+                            str(trainLongAcc)+","+
+                            str(trainShortAcc)+","+
+                            str(trainLongPrec)+","+
+                            str(trainShortPrec)+","+
+                            
+                            str(validAccuracy)+","+
+                            str(validCoverage)+","+
+                            str(validReward)+","+
+                            str(validLongPerc)+","+
+                            str(validShortPerc)+","+
+                            str(validLongAcc)+","+
+                            str(validShortAcc)+","+
+                            str(validLongPrec)+","+
+                            str(validShortPrec)+","+
+                            
+                            str(testAccuracy)+","+
+                            str(testCoverage)+","+
+                            str(testReward)+","+
+                            str(testLongPerc)+","+
+                            str(testShortPerc)+","+
+                            str(testLongAcc)+","+
+                            str(testShortAcc)+","+
+                            str(testLongPrec)+","+
+                            str(testShortPrec)+"\n")
 
             #Close the file                
             self.outputFile.close()
@@ -344,17 +414,24 @@ class DeepQTrading:
             #the previous walk   
             self.currentStartingPoint+=self.testSize
 
-            #Write validation and Testing data into files
-            #Save the files for processing later with the ensemble considering the 100 epochs
-            ensambleValid.to_csv(f"{self.ensembleFolder}/walk{iteration}ensemble_valid.csv")
-            ensambleTest.to_csv(f"{self.ensembleFolder}/walk{iteration}ensemble_test.csv")
+            # Save Q-values before moving to next walk
+            self.train_q_callback.save_file()
+            self.valid_q_callback.save_file()
+            self.test_q_callback.save_file()
+
+            #Write validation and Testing data into files với tên file khác nhau cho test only
+
+            if self.skip_training:
+                ensambleTest.to_csv(f"{self.ensembleFolder}/test_only/walk{iteration}_ensemble_test.csv")
+            else:
+                ensambleTrain.to_csv(f"{self.ensembleFolder}/walk{iteration}ensemble_train.csv")
+                ensambleValid.to_csv(f"{self.ensembleFolder}/walk{iteration}ensemble_valid.csv")
+                ensambleTest.to_csv(f"{self.ensembleFolder}/walk{iteration}ensemble_test.csv")
             self.numWalk = iteration
 
     #Function to end the Agent
     def end(self):
-        """Kết thúc quá trình training và tạo báo cáo đánh giá"""
-        # Lưu model cuối cùng
-        # self.model.save_weights(self.outputFile + "model.h5", overwrite=True)
+        """End the training process and create an evaluation report"""
 
         evaluate_model(
             num_epochs=self.explorations[0][1],

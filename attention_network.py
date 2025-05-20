@@ -3,22 +3,27 @@ from keras.models import Sequential
 from keras.layers import Dense, Flatten, Activation, Layer, LeakyReLU
 from keras import backend as K
 from enum import Enum
+import numpy as np
+import matplotlib.pyplot as plt
+from keras.callbacks import Callback
+import json
+import os
 
 class ModelType(Enum):
-    TIME_FRAME_ATN = 'time_frame_atn'  # TimeFrameAttention
-    SIMPLE_ATN = 'simple_atn'        # SimpleAttention
     ORIGINAL = 'original'
+    TIME_FRAME_ATN = 'time_frame_atn'  # TimeFrameAttention
+    GLOBAL_FEATURE_ATN = 'global_feature_atn'  # GlobalFeatureAttention
+    LOCAL_FEATURE_ATN = 'local_feature_atn'  # LocalFeatureAttention
     
     @classmethod
     def get_values(cls):
         return [e.value for e in cls]
 
-class SimpleAttention(Layer):
+class GlobalFeatureAttention(Layer):
     def __init__(self, **kwargs):
-        super(SimpleAttention, self).__init__(**kwargs)
+        super(GlobalFeatureAttention, self).__init__(**kwargs)
         
     def build(self, input_shape):
-        # Khởi tạo weights cho attention
         self.W = self.add_weight(name='attention_weight', 
                                  shape=(input_shape[-1], input_shape[-1]),
                                  initializer='glorot_uniform',
@@ -27,7 +32,7 @@ class SimpleAttention(Layer):
                                  shape=(input_shape[-1],),
                                  initializer='zeros',
                                  trainable=True)
-        super(SimpleAttention, self).build(input_shape)
+        super(GlobalFeatureAttention, self).build(input_shape)
         
     def call(self, x):
         batch_size = K.shape(x)[0]
@@ -39,19 +44,17 @@ class SimpleAttention(Layer):
         # softmax -> attention weights
         a = K.softmax(e, axis=-1)
         
+        # In weights bằng K.print_tensor
+        K.print_tensor(a, message="Global Feature Attention Weights: ")
+        
         # context vector
         return x_flat * a
         
-    def compute_output_shape(self, input_shape):
-        return (input_shape[0], 68)
-    
-        
-class TimeFrameAttention(Layer):
+class LocalFeatureAttention(Layer):
     def __init__(self, **kwargs):
-        super(TimeFrameAttention, self).__init__(**kwargs)
+        super(LocalFeatureAttention, self).__init__(**kwargs)
         
     def build(self, input_shape):
-        # Khởi tạo các weights cho từng khung thời gian
         self.W_hour = self.add_weight(name='hour_weight', 
                                      shape=(40, 40),
                                      initializer='glorot_uniform',
@@ -67,7 +70,6 @@ class TimeFrameAttention(Layer):
                                      initializer='glorot_uniform',
                                      trainable=True)
         
-        # Bias cho từng khung thời gian
         self.b_hour = self.add_weight(name='hour_bias', 
                                      shape=(40,),
                                      initializer='zeros',
@@ -83,7 +85,7 @@ class TimeFrameAttention(Layer):
                                      initializer='zeros',
                                      trainable=True)
                                      
-        super(TimeFrameAttention, self).build(input_shape)
+        super(LocalFeatureAttention, self).build(input_shape)
         
     def call(self, x):
         # Tách input thành các khung thời gian
@@ -104,14 +106,71 @@ class TimeFrameAttention(Layer):
         day_weighted = day_data * day_att
         week_weighted = week_data * week_att
         
-        # Ghép lại
         output = K.concatenate([hour_weighted, day_weighted, week_weighted], axis=-1)
         
         return output
         
-    def compute_output_shape(self, input_shape):
-        return (input_shape[0], 68)
-    
+
+class TimeFrameAttention(Layer):
+    def __init__(self, **kwargs):
+        super(TimeFrameAttention, self).__init__(**kwargs)
+        
+    def build(self, input_shape):
+        self.W_hour = self.add_weight(name='hour_weight',
+                                    shape=(40, 1),
+                                    initializer='glorot_uniform',
+                                    trainable=True)
+                                    
+        self.W_day = self.add_weight(name='day_weight',
+                                    shape=(20, 1),
+                                    initializer='glorot_uniform',
+                                    trainable=True)
+                                    
+        self.W_week = self.add_weight(name='week_weight',
+                                    shape=(8, 1),
+                                    initializer='glorot_uniform',
+                                    trainable=True)
+        
+        self.b = self.add_weight(name='timeframe_bias',
+                                shape=(3,),
+                                initializer='zeros',
+                                trainable=True)
+                                
+        super(TimeFrameAttention, self).build(input_shape)
+        
+    def call(self, x):
+        batch_size = K.shape(x)[0]
+        x_flat = K.reshape(x, (batch_size, 68))
+        
+        # Tách input thành các khung thời gian
+        hour_data = x_flat[:, :40]
+        day_data = x_flat[:, 40:60]
+        week_data = x_flat[:, 60:]
+        
+        # Tính attention cho từng khung thời gian riêng biệt
+        hour_score = K.dot(hour_data, self.W_hour)  # [batch_size, 1]
+        day_score = K.dot(day_data, self.W_day)    # [batch_size, 1]
+        week_score = K.dot(week_data, self.W_week)  # [batch_size, 1]
+        
+        # Ghép các score lại
+        scores = K.concatenate([hour_score, day_score, week_score], axis=1)  # [batch_size, 3]
+        
+        # Thêm bias và tính softmax
+        e = K.tanh(scores + self.b)
+        a = K.softmax(e, axis=-1)  # [batch_size, 3]
+        
+        # In ra attention weights
+        K.print_tensor(a, message="TimeFrame Attention Weights: ")
+        
+        # Áp dụng attention weights cho từng khung thời gian
+        hour_weighted = hour_data * a[:, 0:1]
+        day_weighted = day_data * a[:, 1:2]
+        week_weighted = week_data * a[:, 2:3]
+        
+        # Ghép lại
+        output = K.concatenate([hour_weighted, day_weighted, week_weighted], axis=-1)
+        
+        return output
 
 def build_model(model_name, input_shape=(1, 1, 68), nb_actions=3):
     model = Sequential()
@@ -119,10 +178,11 @@ def build_model(model_name, input_shape=(1, 1, 68), nb_actions=3):
 
     if model_name == ModelType.TIME_FRAME_ATN.value:
         model.add(TimeFrameAttention())
-    elif model_name == ModelType.SIMPLE_ATN.value:
-        model.add(SimpleAttention())
+    elif model_name == ModelType.GLOBAL_FEATURE_ATN.value:
+        model.add(GlobalFeatureAttention())
+    elif model_name == ModelType.LOCAL_FEATURE_ATN.value:
+        model.add(LocalFeatureAttention())
     
-    # Thêm các layer tiếp theo
     model.add(Dense(35, activation='linear'))
     model.add(LeakyReLU(alpha=.001))
     model.add(Dense(nb_actions))
@@ -130,7 +190,8 @@ def build_model(model_name, input_shape=(1, 1, 68), nb_actions=3):
 
     custom_objects = {
         'TimeFrameAttention': TimeFrameAttention,
-        'SimpleAttention': SimpleAttention
+        'GlobalFeatureAttention': GlobalFeatureAttention,
+        'LocalFeatureAttention': LocalFeatureAttention
     }
     
     return model, custom_objects

@@ -95,7 +95,7 @@ if model_name not in ModelType.get_values():
 dqt = DeepQTrading(
     model_name=model_name,
     market=market,
-    explorations=[(0.2,100)],
+    explorations=[(0.2,1)],
     trainSize=datetime.timedelta(days=360*5),
     validationSize=datetime.timedelta(days=30*6),
     testSize=datetime.timedelta(days=30*6),
@@ -103,7 +103,7 @@ dqt = DeepQTrading(
     isOnlyShort=isOnlyShort,
     )
 
-# dqt.run()
+dqt.run()
 
 end_time = time.time()
 training_time = end_time - start_time

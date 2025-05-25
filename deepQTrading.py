@@ -4,8 +4,8 @@
 from spEnv import SpEnv
 
 #Callback used to print the results at each episode
-from callback import ValidationCallback
-from QValueCallback import QValueCallback
+from callback import ValidationCallback, QValueCallback
+# from q_value_callback import QValueCallback
 
 #Keras library for the NN considered
 from keras.models import Sequential
@@ -59,7 +59,7 @@ class DeepQTrading:
 
         # Prepare folder paths
         training_dir = f"./Output/training/{market}/{model_name}"
-        self.training_file=f"{training_dir}/walks"
+        self.training_file_path=f"{training_dir}/walks"
 
         self.ensemble_dir=f"./Output/ensemble/{market}/{model_name}"
 
@@ -106,7 +106,7 @@ class DeepQTrading:
         self.agent.save_weights(self.weights_file, overwrite=True)
 
         #Define the current starting point as the initial date
-        self.currentStartingPoint = self.market_config["start_date"],
+        self.currentStartingPoint = self.market_config["start_date"]
 
         #Define the training, validation and testing size as informed by the call
         #Train: 5 years
@@ -166,7 +166,7 @@ class DeepQTrading:
             iteration+=1
 
             #Initiate the output file với tên file khác nhau cho test only
-            self.training_file=open(self.training_file+str(iteration+1)+".csv", "w+")
+            self.training_file = open(f"{self.training_file_path}{str(iteration+1)}.csv", "w+")
             #write the first row of the csv
             self.training_file.write(
                 "Iteration,"+
@@ -307,6 +307,7 @@ class DeepQTrading:
                     self.train_q_callback.set_env(trainEnv)
                     #Reset the training environment
                     trainEnv.resetEnv()
+
                     #Train the agent
                     self.agent.fit(trainEnv,nb_steps=floor(self.trainSize.days-self.trainSize.days*0.2),visualize=False,verbose=0,callbacks=[self.train_q_callback])
                     #Get the info from the train callback

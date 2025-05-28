@@ -1,13 +1,7 @@
-import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense, Flatten, Activation, Layer, LeakyReLU
 from keras import backend as K
 from enum import Enum
-import numpy as np
-import matplotlib.pyplot as plt
-from keras.callbacks import Callback
-import json
-import os
 
 class ModelType(Enum):
     ORIGINAL = 'original'
@@ -43,9 +37,6 @@ class GlobalFeatureAttention(Layer):
         
         # softmax -> attention weights
         a = K.softmax(e, axis=-1)
-        
-        # In weights bằng K.print_tensor
-        K.print_tensor(a, message="Global Feature Attention Weights: ")
         
         # context vector
         return x_flat * a
@@ -114,7 +105,8 @@ class LocalFeatureAttention(Layer):
 class TimeFrameAttention(Layer):
     def __init__(self, **kwargs):
         super(TimeFrameAttention, self).__init__(**kwargs)
-        
+        self.attention_weights = None
+
     def build(self, input_shape):
         self.W_hour = self.add_weight(name='hour_weight',
                                     shape=(40, 1),
@@ -158,9 +150,7 @@ class TimeFrameAttention(Layer):
         # Thêm bias và tính softmax
         e = K.tanh(scores + self.b)
         a = K.softmax(e, axis=-1)  # [batch_size, 3]
-        
-        # In ra attention weights
-        K.print_tensor(a, message="TimeFrame Attention Weights: ")
+        self.attention_weights = a
         
         # Áp dụng attention weights cho từng khung thời gian
         hour_weighted = hour_data * a[:, 0:1]

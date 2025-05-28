@@ -342,7 +342,7 @@ class MoEEnsemble:
         self.weights = np.ones(num_experts) / num_experts
         # Lưu lịch sử hiệu suất của từng expert
         self.performance_history = {i: [] for i in range(num_experts)}
-        
+
     def update_weights(self, expert_performances):
         """
         Cập nhật trọng số dựa trên hiệu suất của các experts
@@ -351,7 +351,7 @@ class MoEEnsemble:
         # Cập nhật lịch sử hiệu suất
         for expert_id, perf in expert_performances.items():
             self.performance_history[expert_id].append(perf)
-            
+
         # Tính trọng số mới dựa trên hiệu suất trung bình
         avg_performances = {i: np.mean(perfs) for i, perfs in self.performance_history.items()}
         total_perf = sum(avg_performances.values())
@@ -378,6 +378,7 @@ class MoEEnsemble:
         final_predictions[weighted_predictions < -0.5] = 2  # Bán
         
         return pd.DataFrame(final_predictions, index=expert_predictions.index, columns=['ensemble'])
+
 
 def evaluate_moe_ensemble(num_walks, market, ensemble_folder, result_file):
     """Đánh giá hiệu suất của MoE ensemble"""

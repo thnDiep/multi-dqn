@@ -14,13 +14,12 @@ class SoftMoEStock(nn.Module):
         self.num_experts = num_experts
         self.num_actions = num_actions
 
-        input_dim = num_experts * num_actions  # Do dùng trực tiếp Q-values
+        input_dim = num_experts * num_actions 
 
         self.router = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, num_experts),
-            nn.Softmax(dim=-1)
         )
 
     def forward(self, expert_qvalues, target_action=None):
@@ -28,18 +27,19 @@ class SoftMoEStock(nn.Module):
         batch_size = expert_qvalues.size(0)
 
         router_input = expert_qvalues.view(batch_size, -1)  # (batch_size, 100*3)
-        expert_weights = self.router(router_input)          # (batch_size, num_experts)
-        
-        weights = expert_weights.unsqueeze(-1)              # (batch_size, num_experts, 1)
-        final_distribution = torch.sum(weights * expert_qvalues, dim=1)  # (batch_size, num_actions)
-        eps = 1e-9
-        final_distribution = final_distribution / (final_distribution.sum(dim=-1, keepdim=True) + eps)
-        final_action = torch.argmax(final_distribution, dim=-1)
+        router_logits = self.router(router_input)          # (batch_size, num_experts)
+        # expert_weights = F.softmax(router_logits, dim=-1)
 
+        weights = router_logits.unsqueeze(-1) 
+        final_distribution = torch.sum(weights * expert_qvalues, dim=1)  # (batch_size, num_actions)
+        final_distribution = F.softmax(final_distribution, dim=-1)  # Normalize to get probabilities
+        final_action = torch.argmax(final_distribution, dim=-1)
         loss = None
         if target_action is not None:
+            # target_dist = F.one_hot(target_action, num_classes=self.num_actions).float()
             loss = F.cross_entropy(final_distribution, target_action)
-
+            # log_mixture = torch.log(final_distribution + 1e-9)
+            # loss = F.kl_div(log_mixture, target_dist, reduction="batchmean")
         return final_action, final_distribution, loss
     
 
@@ -47,8 +47,8 @@ def train_moe(model, dataloader, optimizer, num_epochs=5):
     model.train()
     for epoch in range(num_epochs):
         total_loss = 0
-        for date, expert_actions, labels in dataloader:
-            final_action, final_distribution, loss = model(expert_actions, target_action=labels)
+        for date, expert_qvale, labels in dataloader:
+            final_action, final_distribution, loss = model(expert_qvale, target_action=labels)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -108,7 +108,7 @@ class ExpertQValueDataset(Dataset):
         )
 
 
-def run():
+def run(input_model, df_path):
     num_walks = 8
     total_correct = 0
     total_samples = 0
@@ -117,9 +117,9 @@ def run():
         print(f"\n🚶 Walk {walk_id}")
 
         # Load dữ liệu
-        df_train = pd.read_csv(f"Output/moe_local_feature_atn_q_value/walk{walk_id}_train_labeled.csv")
-        df_valid = pd.read_csv(f"Output/moe_local_feature_atn_q_value/walk{walk_id}_valid_labeled.csv")
-        df_test  = pd.read_csv(f"Output/moe_local_feature_atn_q_value/walk{walk_id}_test_labeled.csv")
+        df_train = pd.read_csv(f"{df_path}/walk{walk_id}_train_labeled.csv")
+        df_valid = pd.read_csv(f"{df_path}/walk{walk_id}_valid_labeled.csv")
+        df_test  = pd.read_csv(f"{df_path}/walk{walk_id}_test_labeled.csv")
 
         print(df_train.shape, df_valid.shape, df_test.shape)
         print(df_train.head())
@@ -135,11 +135,11 @@ def run():
         train_moe(model, train_loader, optimizer, num_epochs=100)
 
         print("Validation:")
-        val_acc, _, _ = evaluate_moe(model, valid_loader, save_path=f"Output/moe_local_feature_atn_q_value/test_action/walk{walk_id}_valid.csv")
+        val_acc, _, _ = evaluate_moe(model, valid_loader, save_path=f"{df_path}/test_action/walk{walk_id}_valid.csv")
         print(f"    Validation Accuracy: {val_acc*100:.2f}%")
 
         print("Testing:")
-        test_acc, correct, total = evaluate_moe(model, test_loader, save_path=f"Output/moe_local_feature_atn_q_value/test_action/walk{walk_id}_test.csv")
+        test_acc, correct, total = evaluate_moe(model, test_loader, save_path=f"{df_path}/test_action/walk{walk_id}_test.csv")
         print(f"    Test Accuracy: {test_acc*100:.2f}%")
 
         total_correct += correct
@@ -147,7 +147,9 @@ def run():
 
     final_accuracy = total_correct / total_samples
     print(f"Overall Test Accuracy across 8 walks: {final_accuracy * 100:.2f}%")
-
+    
+    torch.save(model.state_dict(), f"Output/moe_model/{input_model}.pth")
+    print(f"Model saved at Output/moe_{input_model}.pth")
 
 
 def evaluate_from_final_prediction(action_folder, market_file, num_walks, type='test'):
@@ -171,29 +173,29 @@ def evaluate_from_final_prediction(action_folder, market_file, num_walks, type='
                 action = row['final_action']
 
                 if action == 1:  # Long
-                    # r = (close_price - open_price) / open_price
-                    # rew += r
-                    # pos += 1 if r > 0 else 0
-                    # neg += 0 if r > 0 else 1
-                    # doll += (close_price - open_price) * 50
-                    # cov += 1
-                    rew+= (close_price-open_price)/open_price
-                    pos+= 1 if rew > 0 else 0
-                    neg+= 0 if rew > 0 else 1
-                    doll+=(close_price-open_price)*50
-                    cov+=1
+                    r = (close_price - open_price) / open_price
+                    rew += r
+                    pos += 1 if r > 0 else 0
+                    neg += 0 if r > 0 else 1
+                    doll += (close_price - open_price) * 50
+                    cov += 1
+                    # rew+= (close_price-open_price)/open_price
+                    # pos+= 1 if rew > 0 else 0
+                    # neg+= 0 if rew > 0 else 1
+                    # doll+=(close_price-open_price)*50
+                    # cov+=1
                 elif action == 2:  # Short
-                    # r = -(close_price - open_price) / open_price
-                    # rew += r
-                    # pos += 1 if r > 0 else 0
-                    # neg += 0 if r > 0 else 1
-                    # doll += -(close_price - open_price) * 50
-                    # cov += 1
-                    rew+=-(close_price-open_price)/open_price
-                    neg+= 0 if -rew > 0 else 1
-                    pos+= 1 if -rew > 0 else 0
-                    cov+=1
-                    doll+=-(close_price-open_price)*50
+                    r = -(close_price - open_price) / open_price
+                    rew += r
+                    pos += 1 if r > 0 else 0
+                    neg += 0 if r > 0 else 1
+                    doll += -(close_price - open_price) * 50
+                    cov += 1
+                    # rew+=-(close_price-open_price)/open_price
+                    # neg+= 0 if -rew > 0 else 1
+                    # pos+= 1 if -rew > 0 else 0
+                    # cov+=1
+                    # doll+=-(close_price-open_price)*50
         
 
         acc = pos / cov if cov > 0 else 0
@@ -262,14 +264,19 @@ def plot_ensemble_results(num_walks, market_file, action_folder, result_file):
     
     pdf.close()
 
-def evaluation():
+def evaluation(df_path, market_file):
     plot_ensemble_results(
         num_walks=8,
-        result_file="./Output/moe_local_feature_atn_q_value/actions_result.pdf",
-        action_folder="./Output/moe_local_feature_atn_q_value/test_action",
-        market_file="./datasets/daxDay.csv",
+        result_file=f"{df_path}/actions_result.pdf",
+        action_folder=f"{df_path}/test_action",
+        market_file=market_file,
     )
 
 
-run()
-evaluation()
+df_path = "Output/moe_original_q_value"
+input_model = "original"
+market_file = "datasets/daxDay.csv"
+
+
+run(input_model, df_path)
+evaluation(df_path, market_file)

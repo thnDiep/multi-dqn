@@ -8,31 +8,33 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 class SoftMoEStock(nn.Module):
-    def __init__(self, num_experts=100, num_actions=3, hidden_dim=128):
+    def __init__(self, num_experts=100, num_actions=3, hidden_dim=128, model_type='action'):
         super().__init__()
         self.num_experts = num_experts
         self.num_actions = num_actions
 
-        input_dim = num_experts * num_actions  # do bạn dùng one-hot làm input
+        input_dim = num_experts * num_actions 
 
         self.router = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, num_experts),
-            nn.Softmax(dim=-1)
         )
 
     def forward(self, expert_actions, target_action=None):
         # expert_actions: (batch_size, num_experts)
-        expert_one_hot = F.one_hot(expert_actions, num_classes=self.num_actions).float()
-        router_input = expert_one_hot.view(expert_one_hot.size(0), -1)  # (batch_size, 100*3)
-
-        expert_weights = self.router(router_input)  # (batch_size, num_experts)
+        if model_type == 'action':
+            expert_one_hot = F.one_hot(expert_actions, num_classes=self.num_actions).float()
+            router_input = expert_one_hot.view(expert_one_hot.size(0), -1)  # (batch_size, 100*3)
+        
+        router_logits = self.router(router_input)  # (batch_size, num_experts)
+        expert_weights = F.softmax(router_logits, dim=-1)
 
         # expert_one_hot: (batch_size, num_experts, num_actions)
         weights = expert_weights.unsqueeze(-1)  # (batch_size, num_experts, 1)
         final_distribution = torch.sum(weights * expert_one_hot, dim=1)  # (batch_size, num_actions)
-        final_distribution = final_distribution / final_distribution.sum(dim=-1, keepdim=True)
+        # final_distribution = final_distribution / final_distribution.sum(dim=-1, keepdim=True)
+        
         final_action = torch.argmax(final_distribution, dim=-1)
 
         loss = None
@@ -106,7 +108,7 @@ class ExpertActionDataset(Dataset):
         )
 
 
-def run():
+def run(input_model, df_path, model_type):
     num_walks = 8
     total_correct = 0
     total_samples = 0
@@ -115,27 +117,27 @@ def run():
         print(f"\n🚶 Walk {walk_id}")
 
         # Load dữ liệu
-        df_train = pd.read_csv(f"Output/moe_local_feature_atn/walk{walk_id}ensemble_train_labeled.csv")
-        df_valid = pd.read_csv(f"Output/moe_local_feature_atn/walk{walk_id}ensemble_valid_labeled.csv")
-        df_test  = pd.read_csv(f"Output/moe_local_feature_atn/walk{walk_id}ensemble_test_labeled.csv")
+        df_train = pd.read_csv(f"{df_path}/walk{walk_id}_train_labeled.csv")
+        df_valid = pd.read_csv(f"{df_path}/walk{walk_id}_valid_labeled.csv")
+        df_test  = pd.read_csv(f"{df_path}/walk{walk_id}_test_labeled.csv")
 
         train_loader = DataLoader(ExpertActionDataset(df_train), batch_size=32, shuffle=True)
         valid_loader = DataLoader(ExpertActionDataset(df_valid), batch_size=32, shuffle=False)
         test_loader  = DataLoader(ExpertActionDataset(df_test),  batch_size=32, shuffle=False)
 
         # Khởi tạo lại model cho mỗi walk
-        model = SoftMoEStock(num_experts=100, num_actions=3, hidden_dim=128)
+        model = SoftMoEStock(num_experts=100, num_actions=3, hidden_dim=128, model_type=model_type)
         optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
         print("Training:")
         train_moe(model, train_loader, optimizer, num_epochs=100)
 
         print("Validation:")
-        val_acc, _, _ = evaluate_moe(model, valid_loader, save_path=f"Output/moe_local_feature_atn/test_action/walk{walk_id}_valid.csv")
+        val_acc, _, _ = evaluate_moe(model, valid_loader, save_path=f"{df_path}/test_action/walk{walk_id}_valid.csv")
         print(f"    Validation Accuracy: {val_acc*100:.2f}%")
 
         print("Testing:")
-        test_acc, correct, total = evaluate_moe(model, test_loader, save_path=f"Output/moe_local_feature_atn/test_action/walk{walk_id}_test.csv")
+        test_acc, correct, total = evaluate_moe(model, test_loader, save_path=f"{df_path}/test_action/walk{walk_id}_test.csv")
         print(f"    Test Accuracy: {test_acc*100:.2f}%")
 
         total_correct += correct
@@ -143,6 +145,10 @@ def run():
 
     final_accuracy = total_correct / total_samples
     print(f"Overall Test Accuracy across 8 walks: {final_accuracy * 100:.2f}%")
+    
+    # Save the model
+    torch.save(model.state_dict(), f"Output/moe_model/{input_model}.pth")
+    print(f"Model saved at Output/moe_{input_model}.pth")
 
 
 
@@ -258,14 +264,20 @@ def plot_ensemble_results(num_walks, market_file, action_folder, result_file):
     
     pdf.close()
 
-def evaluation():
+def evaluation(df_path, market_file):
     plot_ensemble_results(
         num_walks=8,
-        result_file="./Output/moe_local_feature_atn/actions_result.pdf",
-        action_folder="./Output/moe_local_feature_atn/test_action",
-        market_file="./datasets/daxDay.csv",
+        result_file=f"{df_path}/actions_result.pdf",
+        action_folder=f"{df_path}/test_action",
+        market_file=market_file,
     )
 
+df_path = "Output/moe_original"
+input_model = "original"
+market_file = "datasets/daxDay.csv"
 
-run()
-evaluation()
+# action || q_value
+model_type = "action"
+
+run(input_model, df_path, model_type)
+evaluation(df_path, market_file)

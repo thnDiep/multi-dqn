@@ -34,11 +34,12 @@ def label_trading_actions(data, threshold=0.0001):
 # data.to_csv("datasets/daxDay_actions.csv", index=False)
 
 
-walk_dir = "path/to/your/walk/files"  # ví dụ: "output/ensemble/dax/local_feature_atn"
-train_dir = "Output/moe_local_feature_atn_q_value"
-valid_dir = "Output/moe_local_feature_atn_q_value"
-test_dir = "Output/moe_local_feature_atn_q_value"
 action_file = "datasets/daxDay_actions.csv"
+input_q_value_dir = "Output/q_values/dax/original"
+input_action_dir = "Output/ensemble/dax/original"
+
+output_dir = "Output/moe_original_q_value"
+
 
 # Đọc file action label
 action_df = pd.read_csv(action_file)[["Date", "action_label"]]
@@ -48,7 +49,7 @@ action_df = pd.read_csv(action_file)[["Date", "action_label"]]
 # action_df["Date"] = pd.to_datetime(action_df["Date"]).dt.strftime("%m/%d/%Y")
 
 for i in range(8):
-    walk_path = f"Output/q_values/dax/local_feature_atn/train/q_values_walk{i}.csv"
+    walk_path = f"{input_q_value_dir}/train/q_values_walk{i}.csv"
     df = pd.read_csv(walk_path)
 
     if 'Date' not in df.columns:
@@ -58,13 +59,14 @@ for i in range(8):
     merged_df = df.merge(action_df, on="Date", how="left")
 
     # Ghi ra file mới
-    merged_df.to_csv(f"{train_dir}/walk{i}_train_labeled.csv", index=False)
+    merged_df.to_csv(f"{output_dir}/walk{i}_train_labeled.csv", index=False)
 
     print(f"✅ walk{i} saved with Action_Label.")
 
 
 for i in range(8):
-    walk_path = f"Output/q_values/dax/local_feature_atn/valid/q_values_walk{i}.csv"
+    walk_path = f"{input_q_value_dir}/valid/q_values_walk{i}.csv"
+
     df = pd.read_csv(walk_path)
 
     if 'Date' not in df.columns:
@@ -74,13 +76,13 @@ for i in range(8):
     merged_df = df.merge(action_df, on="Date", how="left")
 
     # Ghi ra file mới
-    merged_df.to_csv(f"{valid_dir}/walk{i}_valid_labeled.csv", index=False)
+    merged_df.to_csv(f"{output_dir}/walk{i}_valid_labeled.csv", index=False)
 
     print(f"✅ walk{i} saved with Action_Label.")
 
 
 for i in range(8):
-    walk_path = f"Output/q_values/dax/local_feature_atn/test/q_values_walk{i}.csv"
+    walk_path = f"{input_q_value_dir}/test/q_values_walk{i}.csv"
     df = pd.read_csv(walk_path)
 
     if 'Date' not in df.columns:
@@ -90,6 +92,6 @@ for i in range(8):
     merged_df = df.merge(action_df, on="Date", how="left")
 
     # Ghi ra file mới
-    merged_df.to_csv(f"{test_dir}/walk{i}_test_labeled.csv", index=False)
+    merged_df.to_csv(f"{output_dir}/walk{i}_test_labeled.csv", index=False)
 
     print(f"✅ walk{i} saved with Action_Label.")

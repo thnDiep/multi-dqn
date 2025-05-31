@@ -123,6 +123,12 @@ class TimeFrameAttention(Layer):
                                     initializer='glorot_uniform',
                                     trainable=True)
         
+        # Gate weights
+        self.gate_weights = self.add_weight(name='gate_weights',
+                                          shape=(68, 68),
+                                          initializer='glorot_uniform',
+                                          trainable=True)
+        
         self.b = self.add_weight(name='timeframe_bias',
                                 shape=(3,),
                                 initializer='zeros',
@@ -158,8 +164,11 @@ class TimeFrameAttention(Layer):
         week_weighted = week_data * a[:, 2:3]
         
         # Ghép lại
-        output = K.concatenate([hour_weighted, day_weighted, week_weighted], axis=-1)
+        weighted_features = K.concatenate([hour_weighted, day_weighted, week_weighted], axis=-1)
         
+        # Áp dụng gate mechanism
+        gate = K.sigmoid(K.dot(weighted_features, self.gate_weights))
+        output = gate * weighted_features
         return output
 
 def build_model(model_name, input_shape=(1, 1, 68), nb_actions=3):

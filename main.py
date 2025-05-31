@@ -43,7 +43,7 @@ from market_config import get_market_config, MARKET_CONFIG
 
 #Library used for showing the exception in the case of error 
 import sys
-
+sys.argv = ['main.py', '3', '0', 'dax', 'time_frame_atn']
 #import tensorflow as tf
 #from keras.backend.tensorflow_backend import set_session
 #config = tf.ConfigProto()
@@ -95,7 +95,7 @@ if model_name not in ModelType.get_values():
 dqt = DeepQTrading(
     model_name=model_name,
     market=market,
-    explorations=[(0.2,1)],
+    explorations=[(0.2,100)],
     trainSize=datetime.timedelta(days=360*5),
     validationSize=datetime.timedelta(days=30*6),
     testSize=datetime.timedelta(days=30*6),

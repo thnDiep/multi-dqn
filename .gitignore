@@ -4,6 +4,7 @@ Output/
 .venv38/
 backup/
 venv36
+.idea/
 
 # Don't track this files #
 telegramSettings.py

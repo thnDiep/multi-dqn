@@ -32,7 +32,7 @@ class IndayTrading:
                     neg += 0 if rew > 0 else 1
                     doll += (self.market_data.at[date,'Close'] - self.market_data.at[date,'Open']) * 50
                     cov += 1
-                elif (i[self.final_action_column] == -1):  # Short
+                elif (i[self.final_action_column] == 2):  # Short
                     rew += -(self.market_data.at[date,'Close'] - self.market_data.at[date,'Open']) / self.market_data.at[date,'Open']
                     neg += 0 if -rew > 0 else 1
                     pos += 1 if -rew > 0 else 0
@@ -68,12 +68,13 @@ class IndayTrading:
             (str(round(self.pos_sum/self.cov_sum,2)) if (self.cov_sum>0) else "0")
         ])
         return self.values, self.columns
-    
+
+
 class Position:
     def __init__(self, entry_price, entry_date, position_type, stop_loss, take_profit, quantity):
         self.entry_price = entry_price
         self.entry_date = entry_date
-        self.position_type = position_type  # 1: long, -1: short
+        self.position_type = position_type  # 1: long, 2: short
         self.stop_loss = stop_loss
         self.take_profit = take_profit
         self.quantity = quantity  # Số lượng cổ phiếu
@@ -82,7 +83,6 @@ class Position:
         self.pnl = 0
         self.exit_reason = None  # 'stop_loss', 'take_profit', 'signal'
 
-    
     
 class RealisticTrading:
     def __init__(self, market_data, stop_loss_pct=0.02, take_profit_pct=0.04, initial_balance=10000, commission_rate=0.001, use_sl_tp=True):
@@ -148,7 +148,7 @@ class RealisticTrading:
         """Thực hiện giao dịch cho một walk"""
         positions = []
         daily_returns = []
-        equity_curve = []  # Mỗi walk bắt đầu với initial_balance
+        equity_curve = []
         current_balance = self.initial_balance
         active_position = None
         dates = []
@@ -159,23 +159,21 @@ class RealisticTrading:
 
             dates.append(date)
             current_price = self.market_data.at[date, 'Close']
-            high_price = self.market_data.at[date, 'High']
-            low_price = self.market_data.at[date, 'Low']
 
             # Kiểm tra điều kiện đóng vị thế
             signal_type = None
             if active_position is not None:
                 # Đóng vị thế nếu có tín hiệu đảo chiều
-                if (active_position.position_type == 1 and row[self.final_action_column] == -1) or \
-                   (active_position.position_type == -1 and row[self.final_action_column] == 1):
+                if (active_position.position_type == 1 and row[self.final_action_column] == 2) or \
+                   (active_position.position_type == 2 and row[self.final_action_column] == 1):
                     signal_type = 'signal'
 
                 elif self.use_sl_tp:  # Chỉ kiểm tra stop loss và take profit nếu use_sl_tp=True
                     # Nếu không có tín hiệu đảo chiều thì kiểm tra stop_loss và take_profit
                     is_stop_loss = (active_position.position_type == 1 and current_price <= active_position.stop_loss) or \
-                                 (active_position.position_type == -1 and current_price >= active_position.stop_loss)
+                                 (active_position.position_type == 2 and current_price >= active_position.stop_loss)
                     is_take_profit = (active_position.position_type == 1 and current_price >= active_position.take_profit) or \
-                                   (active_position.position_type == -1 and low_price <= active_position.take_profit)
+                                   (active_position.position_type == 2 and current_price <= active_position.take_profit)
                     if is_stop_loss:
                         signal_type = 'stop_loss'
                     elif is_take_profit:
@@ -207,10 +205,10 @@ class RealisticTrading:
                     stop_loss = current_price * (1 - self.stop_loss_pct) if self.use_sl_tp else None
                     take_profit = current_price * (1 + self.take_profit_pct) if self.use_sl_tp else None
                     active_position = Position(current_price, date, 1, stop_loss, take_profit, quantity)
-                elif row[self.final_action_column] == -1:  # Short
+                elif row[self.final_action_column] == 2:  # Short
                     stop_loss = current_price * (1 + self.stop_loss_pct) if self.use_sl_tp else None
                     take_profit = current_price * (1 - self.take_profit_pct) if self.use_sl_tp else None
-                    active_position = Position(current_price, date, -1, stop_loss, take_profit, quantity)
+                    active_position = Position(current_price, date, 2, stop_loss, take_profit, quantity)
 
             # Cập nhật đường equity
             equity_curve.append(current_balance)

@@ -30,7 +30,7 @@ The stock market forecasting is one of the most challenging application of machi
 
 ## Requirements
 
--   Python 3.6
+-   Python 3.6.8
 -   Tensorflow 1.14.0: `pip install tensorflow==1.14.0`
 -   Keras 2.3.1: `pip install keras==2.3.1`
 -   Keras-RL 0.4.2: `pip install keras-rl==0.4.2`
@@ -40,31 +40,26 @@ The stock market forecasting is one of the most challenging application of machi
 
 ## Usage
 
-The code requires 4 parameters to run:
-`python main.py <numberOfActions> <isOnlyShort> <market> <modelName>`
+The code supports two ensemble approaches:
 
-Where:
-- `numberOfActions`: Number of actions (default: 3 for FULL agent)
-- `isOnlyShort`: 0 for FULL agent (default)
-- `market`: Market name (e.g., dax)
-- `modelName`: Model name (original, global_feature_atn, local_feature_atn, time_frame_atn)
+### 1. Threshold-based Ensemble
+This approach combines predictions from multiple models using a consensus threshold. If the number of models predicting a particular action exceeds the threshold, that action is selected.
 
-Note: This project only uses FULL agent, so `numberOfActions` is always 3 and `isOnlyShort` is always 0.
+Run with different models:
+```
+python -W ignore main.py dax original 0
+python -W ignore main.py dax global_feature_atn 0
+python -W ignore main.py dax local_feature_atn 0
+python -W ignore main.py dax time_frame_atn 0
+```
 
-Examples:
-- Run with original model:
-  ```
-  python -W ignore main.py 3 0 dax original
-  ```
-- Run with GlobalFeatureAttention:
-  ```
-  python -W ignore main.py 3 0 dax global_feature_atn
-  ```
-- Run with LocalFeatureAttention:
-  ```
-  python -W ignore main.py 3 0 dax local_feature_atn
-  ```
-- Run with TimeFrameAttention:
-  ```
-  python -W ignore main.py 3 0 dax time_frame_atn
-  ```
+### 2. Mixture of Experts (MoE) Ensemble
+This approach uses a MoE to dynamically weight the predictions from different expert models based on the current market conditions.
+
+Run with different models:
+```
+python -W ignore main.py dax original 1
+python -W ignore main.py dax global_feature_atn 1
+python -W ignore main.py dax local_feature_atn 1
+python -W ignore main.py dax time_frame_atn 1
+```

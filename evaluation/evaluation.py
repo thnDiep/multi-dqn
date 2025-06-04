@@ -41,11 +41,7 @@ class Evaluation:
         """
         # Initialize results storage
         inday_trading = IndayTrading(self.market_data)
-        # Open this comment to evaluate the results with sl and tp
         realistic_trading = RealisticTrading(self.market_data, self.stop_loss_pct, self.take_profit_pct)
-
-        # Open this comment to evaluate the results without sl and tp
-        # realistic_trading = RealisticTrading(self.market_data, self.stop_loss_pct, self.take_profit_pct, use_sl_tp=False)
 
         # Process each walk file once
         for j in range(self.num_walks):
@@ -67,11 +63,7 @@ class Evaluation:
         inday_values, inday_columns = inday_trading.get_total_walk_result()
         realistic_values, realistic_columns = realistic_trading.get_total_walk_result()
         
-        # Open this comment to plot the results with sl and tp
         realistic_trading.plot_equity_curve(f"{self.result_dir}/equity_curve_{consensus_threshold}.pdf")
-
-        # Open this comment to plot the results without sl and tp
-        # realistic_trading.plot_equity_curve(f"{self.result_dir}/no_sl_tp/equity_curve_{consensus_threshold}_no_sl_tp.pdf")
 
         return {
             'inday': {'values': inday_values, 'columns': inday_columns},
@@ -80,7 +72,6 @@ class Evaluation:
     
     def plot_ensemble_results(self):
         """Plot ensemble results tables with different thresholds"""
-        # Open this comment to plot the results with sl and tp
         pdf_inday = PdfPages(f"{self.result_dir}/inday_trading.pdf")
         pdf_realistic = PdfPages(f"{self.result_dir}/realistic_trading.pdf")
 
@@ -137,7 +128,6 @@ class Evaluation:
         """
         # Initialize results storage
         inday_trading = IndayTrading(self.market_data)
-        # Open this comment to evaluate the results with sl and tp
         realistic_trading = RealisticTrading(self.market_data, self.stop_loss_pct, self.take_profit_pct)
 
         # Process each walk file once
@@ -152,7 +142,6 @@ class Evaluation:
         inday_values, inday_columns = inday_trading.get_total_walk_result()
         realistic_values, realistic_columns = realistic_trading.get_total_walk_result()
         
-        # Open this comment to plot the results with sl and tp
         realistic_trading.plot_equity_curve(f"{self.result_dir}/equity_curve.pdf")
 
         return {

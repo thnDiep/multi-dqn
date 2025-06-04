@@ -85,13 +85,12 @@ class Position:
 
     
 class RealisticTrading:
-    def __init__(self, market_data, stop_loss_pct=0.02, take_profit_pct=0.04, initial_balance=10000, commission_rate=0.001, use_sl_tp=True):
+    def __init__(self, market_data, stop_loss_pct=0.02, take_profit_pct=0.04, initial_balance=10000, commission_rate=0):
         self.initial_balance = initial_balance
         self.market_data = market_data
         self.stop_loss_pct = stop_loss_pct
         self.take_profit_pct = take_profit_pct
-        self.commission_rate = commission_rate  # Phí giao dịch 0.1%
-        self.use_sl_tp = use_sl_tp  # Thêm tham số để kiểm soát việc sử dụng stop loss và take profit
+        self.commission_rate = commission_rate  
         self.walk_pnls = []  # Lưu lợi nhuận/thua lỗ của từng walk
         self.total_trades = 0
         self.total_return_pct = 0
@@ -168,8 +167,7 @@ class RealisticTrading:
                    (active_position.position_type == 2 and row[self.final_action_column] == 1):
                     signal_type = 'signal'
 
-                elif self.use_sl_tp:  # Chỉ kiểm tra stop loss và take profit nếu use_sl_tp=True
-                    # Nếu không có tín hiệu đảo chiều thì kiểm tra stop_loss và take_profit
+                else: # Nếu không có tín hiệu đảo chiều thì kiểm tra stop_loss và take_profit
                     is_stop_loss = (active_position.position_type == 1 and current_price <= active_position.stop_loss) or \
                                  (active_position.position_type == 2 and current_price >= active_position.stop_loss)
                     is_take_profit = (active_position.position_type == 1 and current_price >= active_position.take_profit) or \
@@ -202,12 +200,12 @@ class RealisticTrading:
             if active_position is None and row[self.final_action_column] != 0 and signal_type != 'signal':
                 quantity = current_balance / current_price
                 if row[self.final_action_column] == 1:  # Long
-                    stop_loss = current_price * (1 - self.stop_loss_pct) if self.use_sl_tp else None
-                    take_profit = current_price * (1 + self.take_profit_pct) if self.use_sl_tp else None
+                    stop_loss = current_price * (1 - self.stop_loss_pct)
+                    take_profit = current_price * (1 + self.take_profit_pct)
                     active_position = Position(current_price, date, 1, stop_loss, take_profit, quantity)
                 elif row[self.final_action_column] == 2:  # Short
-                    stop_loss = current_price * (1 + self.stop_loss_pct) if self.use_sl_tp else None
-                    take_profit = current_price * (1 - self.take_profit_pct) if self.use_sl_tp else None
+                    stop_loss = current_price * (1 + self.stop_loss_pct) 
+                    take_profit = current_price * (1 - self.take_profit_pct) 
                     active_position = Position(current_price, date, 2, stop_loss, take_profit, quantity)
 
             # Cập nhật đường equity

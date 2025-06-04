@@ -17,7 +17,7 @@ from utils.market_config import MARKET_CONFIG
 from expert_model.deepQTrading import DeepQTrading
 from router_model.moeTrading import MoeTrading
 
-sys.argv = ['main.py', 'dax', 'original', '1']
+# sys.argv = ['main.py', 'dax', 'original', '1']
 
 # Check input parameters
 if len(sys.argv) < 4:

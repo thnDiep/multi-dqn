@@ -148,11 +148,11 @@ class DeepQTrading:
         self.valid_q_callback = QValueCallback(output_dir=self.q_values_dir, phase='valid')
         self.test_q_callback = QValueCallback(output_dir=self.q_values_dir, phase='test')
 
-        # if self.model_name == "time_frame_atn":
-        #     self.test_atn_callback = AttentionCallback(output_dir=self.atn_dir, phase='test')
-        # else:
-            # self.test_atn_callback = None
-        self.test_atn_callback = None
+        if self.model_name == "time_frame_atn":
+            self.test_atn_callback = AttentionCallback(output_dir=self.atn_dir, phase='test')
+        else:
+            self.test_atn_callback = None
+        # self.test_atn_callback = None
 
     def run(self):
         # Initiates the environments,

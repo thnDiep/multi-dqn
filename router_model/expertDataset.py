@@ -13,7 +13,7 @@ class ExpertDataset(Dataset):
             qvalue_cols = [col for col in df.columns if col.startswith("iteration")]
             self.expert_data = df[qvalue_cols].values.reshape(-1, 100, 3).astype(np.float32)
             
-        self.labels = df.iloc[:, -1].values.astype(int)
+        self.labels = df.iloc[:, -1].values.astype(int) # shape: (N,)
 
     def __len__(self):
         return len(self.labels)

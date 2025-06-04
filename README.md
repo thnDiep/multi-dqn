@@ -56,10 +56,18 @@ python -W ignore main.py dax time_frame_atn 0
 ### 2. Mixture of Experts (MoE) Ensemble
 This approach uses a MoE to dynamically weight the predictions from different expert models based on the current market conditions.
 
-Run with different models:
+Run with different models with Flat MoE Models:
 ```
 python -W ignore main.py dax original 1
 python -W ignore main.py dax global_feature_atn 1
 python -W ignore main.py dax local_feature_atn 1
 python -W ignore main.py dax time_frame_atn 1
+```
+
+Run with different models with 2D MoE Models:
+```
+python -W ignore main.py dax original 2
+python -W ignore main.py dax global_feature_atn 2
+python -W ignore main.py dax local_feature_atn 2
+python -W ignore main.py dax time_frame_atn 2
 ```

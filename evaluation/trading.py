@@ -25,34 +25,41 @@ class IndayTrading:
         
         for date, i in df.iterrows():
             num += 1
+            open_price = self.market_data.at[date, 'Open']
+            close_price = self.market_data.at[date, 'Close']
+            action = i[self.final_action_column]
+
             if date in self.market_data.index:
-                if (i[self.final_action_column] == 1):  # Long
-                    rew += (self.market_data.at[date,'Close'] - self.market_data.at[date,'Open']) / self.market_data.at[date,'Open']
+                if (action == 1):  # Long
+                    rew += (close_price - open_price) / open_price
                     pos += 1 if rew > 0 else 0
                     neg += 0 if rew > 0 else 1
-                    doll += (self.market_data.at[date,'Close'] - self.market_data.at[date,'Open']) * 50
+                    doll += (close_price - open_price) * 50
                     cov += 1
-                elif (i[self.final_action_column] == 2):  # Short
-                    rew += -(self.market_data.at[date,'Close'] - self.market_data.at[date,'Open']) / self.market_data.at[date,'Open']
+                elif (action == 2):  # Short
+                    rew += -(close_price - open_price) / open_price
                     neg += 0 if -rew > 0 else 1
                     pos += 1 if -rew > 0 else 0
-                    doll += -(self.market_data.at[date,'Close'] - self.market_data.at[date,'Open']) * 50
+                    doll += -(close_price - open_price) * 50
                     cov += 1
         
+        acc = pos / cov if cov > 0 else 0
+        cov_rate = cov / num if num > 0 else 0
+
         self.values.append([
             str(round(current_walk,2)),
             str(round(rew,2)),
             str(round(pos,2)),
             str(round(neg,2)),
             str(round(doll,2)),
-            str(round(cov/num,2)),
-            (str(round(pos/cov,2)) if (cov>0) else "0")
+            str(round(cov_rate,2)),
+            str(round(acc,2))
         ])
         
-        self.doll_sum += doll
         self.rew_sum += rew
         self.pos_sum += pos
         self.neg_sum += neg
+        self.doll_sum += doll
         self.cov_sum += cov
         self.num_sum += num
 
@@ -64,8 +71,8 @@ class IndayTrading:
             str(round(self.pos_sum,2)),
             str(round(self.neg_sum,2)),
             str(round(self.doll_sum,2)),
-            str(round(self.cov_sum/self.num_sum,2)),
-            (str(round(self.pos_sum/self.cov_sum,2)) if (self.cov_sum>0) else "0")
+            str(round(self.cov_sum/self.num_sum,2) if self.num_sum > 0 else 0),
+            str(round(self.pos_sum/self.cov_sum,2) if self.cov_sum > 0 else 0)
         ])
         return self.values, self.columns
 

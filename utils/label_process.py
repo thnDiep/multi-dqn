@@ -4,8 +4,7 @@ import pandas as pd
 from market_config import get_market_config
 
 def label_trading_actions(data, threshold=0.0001):
-    # data = data[window_size:]
-    y_true = np.ones(len(data), dtype=int)
+    y_true = np.zeros(len(data), dtype=int)
     last_action = 1
 
     for i in range(len(data) - 1):
@@ -14,23 +13,23 @@ def label_trading_actions(data, threshold=0.0001):
 
         changes = (next_price - current_price) / current_price
 
-        if changes >= threshold or (last_action == 0 and changes >= 0):
-            last_action = 0  # BUY
-            y_true[i] = 0
+        if changes >= threshold or (last_action == 1 and changes >= 0):
+            last_action = 1  # BUY
+            y_true[i] = 1
         elif changes <= -threshold or (last_action == 2 and changes < 0):
             last_action = 2  # SELL
             y_true[i] = 2
         else:
-            last_action = 1  # HOLD
-            y_true[i] = 1
+            last_action = 0  # HOLD
+            y_true[i] = 0
     return np.array(y_true)
 
 
-# data = pd.read_csv("datasets/daxDay.csv") 
-# action_labels = label_trading_actions(data)
+data = pd.read_csv("datasets/daxDay.csv") 
+action_labels = label_trading_actions(data)
 
-# data["Action_Label"] = action_labels
-# data.to_csv("datasets/daxDay_actions.csv", index=False)
+data["action_label"] = action_labels
+data.to_csv("datasets/daxDay_actions.csv", index=False)
 
 
 market = "dax"

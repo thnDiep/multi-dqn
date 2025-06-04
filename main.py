@@ -51,12 +51,21 @@ if model_name not in ModelType.get_values():
     sys.exit(1)
 
 start_time = time.time()
-if isMoe == '1':
+if isMoe != '0':
+    if isMoe == '1':
+        moe_model = "flat"
+    elif isMoe == '2':
+        moe_model = "2d"
+    else:
+        print("Invalid MoE model")
+        sys.exit(1)
+
     model = MoeTrading(
         market=market,
         model_name=model_name,
         model_type="q_values", # "q_values" or "action"
-        num_epochs=num_epochs
+        num_epochs=num_epochs,
+        moe_model_type=moe_model # "flat" or "2d"
     )
 else:
     model = DeepQTrading(

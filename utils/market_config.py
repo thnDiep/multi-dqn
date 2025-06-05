@@ -13,9 +13,9 @@ MARKET_CONFIG = {
     },
     "sp500": {
         "name": "S&P 500",
-        "num_walks": 22,
-        "start_date": datetime(2007, 9, 18, 0, 0, 0),
-        "end_date": datetime(2017, 5, 29, 0, 0, 0),
+        "num_walks": 8,
+        "start_date": datetime(2007, 9, 18),
+        "end_date": datetime(2017, 5, 29),
     }
 }
 

@@ -149,9 +149,9 @@ class Evaluation:
             'realistic': {'values': realistic_values, 'columns': realistic_columns}
         }
 
-    def plot_moe_results(self):
+    def plot_moe_results(self, ensemble_type, model_type=None, moe_model_type=None):
         """Plot MOE results tables with different thresholds"""
-        pdf_inday = PdfPages(f"{self.result_dir}/results_moe.pdf")
+        pdf_inday = PdfPages(f"{self.result_dir}/{ensemble_type}_{model_type}_{moe_model_type}.pdf")
 
         results = self.evaluate_for_moe("valid")
         inday_valid = results['inday']
@@ -192,10 +192,10 @@ class Evaluation:
 
         pdf_inday.close()
 
-    def plot_results(self, ensemble_type):
+    def plot_results(self, ensemble_type=None, model_type=None, moe_model_type=None):
         if ensemble_type == "ensemble":
             self.plot_ensemble_results()
         elif ensemble_type == "moe":
-            self.plot_moe_results()
+            self.plot_moe_results(ensemble_type, model_type, moe_model_type)
         else:
             raise ValueError("Invalid ensemble type")

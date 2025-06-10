@@ -63,7 +63,7 @@ if isMoe != '0':
     model = MoeTrading(
         market=market,
         model_name=model_name,
-        model_type="q_values", # "q_values" or "action"
+        model_type="action", # "q_values" or "action"
         num_epochs=num_epochs,
         moe_model_type=moe_model # "flat" or "2d"
     )

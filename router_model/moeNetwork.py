@@ -35,8 +35,8 @@ class MoeFlatNetwork(nn.Module):
         weights = expert_weights.unsqueeze(-1)  # (batch_size, num_experts, 1)
         output = torch.sum(weights * expert_values, dim=1)  # (batch_size, num_actions)
         
-        if self.model_type == 'q_value':
-            output = F.softmax(output, dim=-1)
+        # if self.model_type == 'q_value':
+        #     output = F.softmax(output, dim=-1)
 
         return output, expert_weights
 

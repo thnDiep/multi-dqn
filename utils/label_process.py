@@ -33,7 +33,7 @@ data.to_csv("datasets/daxDay_actions.csv", index=False)
 
 
 market = "dax"
-model_name = "original"
+model_name = "time_frame_atn"
 num_walks = get_market_config(market)["num_walks"]
 phase = ["train", "valid", "test"]
 

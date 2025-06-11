@@ -152,6 +152,9 @@ class MoeTrading:
             df_valid = pd.read_csv(f"{self.input_dir}/walk{walk_id}_valid_labeled.csv")
             df_test  = pd.read_csv(f"{self.input_dir}/walk{walk_id}_test_labeled.csv")
 
+            print(df_train.head())  # Kiểm tra 5 dòng đầu tiên của DataFrame
+            print(df_train.shape)   # Kiểm tra kích thước của DataFrame
+            print(df_train.columns)  # Kiểm tra danh sách các cột
             train_loader = DataLoader(ExpertDataset(df_train, self.model_type), batch_size=32, shuffle=True)
             valid_loader = DataLoader(ExpertDataset(df_valid, self.model_type), batch_size=32, shuffle=False)
             test_loader  = DataLoader(ExpertDataset(df_test, self.model_type),  batch_size=32, shuffle=False)
@@ -201,5 +204,5 @@ class MoeTrading:
             take_profit_pct=0.04
         )
 
-        evaluation.plot_results(ensemble_type="moe")
+        evaluation.plot_results(ensemble_type="moe", model_type=self.model_type, moe_model_type=self.moe_model_type)
         print(f"Evaluation completed for {self.market}. Check the Output directory for results.")

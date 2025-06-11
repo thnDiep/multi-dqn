@@ -72,7 +72,6 @@ class DeepQTrading:
         os.makedirs(self.result_dir, exist_ok=True)
         os.makedirs(model_dir, exist_ok=True)
         os.makedirs(self.q_values_dir, exist_ok=True)
-        os.makedirs(self.atn_dir, exist_ok=True)
         os.makedirs(self.final_decision_dir, exist_ok=True)
 
         self.isOnlyShort = isOnlyShort
@@ -149,6 +148,7 @@ class DeepQTrading:
         self.test_q_callback = QValueCallback(output_dir=self.q_values_dir, phase='test')
 
         if self.model_name == "time_frame_atn":
+            os.makedirs(self.atn_dir, exist_ok=True)
             self.test_atn_callback = AttentionCallback(output_dir=self.atn_dir, phase='test')
         else:
             self.test_atn_callback = None

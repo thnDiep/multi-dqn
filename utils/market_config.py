@@ -16,6 +16,12 @@ MARKET_CONFIG = {
         "num_walks": 8,
         "start_date": datetime(2007, 9, 18),
         "end_date": datetime(2017, 5, 29),
+    },
+    "msft": {
+        "name": "MSFT",
+        "num_walks": 8,
+        "start_date": datetime(2007, 9, 18),
+        "end_date": datetime(2017, 5, 29),
     }
 }
 

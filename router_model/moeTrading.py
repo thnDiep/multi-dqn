@@ -21,7 +21,7 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 class MoeTrading:
-    def __init__(self, market, model_name, model_type, num_epochs=100, moe_model_type="flat"):
+    def __init__(self, market, model_name, model_type, num_epochs=100, moe_model_type="flat", lr=1e-3, weight_decay=1e-5, label_smoothing=0.01, lambda_entropy=0.1):
         self.market = market
         self.num_walks = get_market_config(market)['num_walks']
         self.model_name = model_name
@@ -31,24 +31,21 @@ class MoeTrading:
         self.patience = 10
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.label_smoothing = label_smoothing
+        self.lambda_entropy = lambda_entropy
+
         # Prepare folder paths
         self.input_dir = f"./Output/labeled/{model_type}/{market}/{model_name}"
 
-        self.ensemble_dir = f"./Output/moe/ensemble/{model_type}/{market}/{model_name}"
-        self.model_dir = f"./Output/moe/models/{model_type}/{market}/{model_name}"
-        self.result_dir = f"./Output/moe/results/{model_type}/{market}/{model_name}"
-
+        self.ensemble_dir = f"./Output/moe/ensemble/{model_type}/{market}/{model_name}_lr({lr})_wd({weight_decay})_ls({label_smoothing})_le({lambda_entropy})"
+        self.model_dir = f"./Output/moe/models/{model_type}/{market}/{model_name}_lr({lr})_wd({weight_decay})_ls({label_smoothing})_le({lambda_entropy})"
+        self.result_dir = f"./Output/moe/results/{model_type}/{market}/{model_name}_lr({lr})_wd({weight_decay})_ls({label_smoothing})_le({lambda_entropy})"
+    
         os.makedirs(self.ensemble_dir, exist_ok=True)
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.result_dir, exist_ok=True)
-
-        # Instantiate the agent with parameters received
-        if self.moe_model_type == "flat":
-            self.model = MoeFlatNetwork(model_type=self.model_type).to(self.device)
-        elif self.moe_model_type == "2d":
-            self.model = Moe2DNetwork(model_type=self.model_type).to(self.device)
-
-        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-5)
 
     def train(self, walk_id, train_loader, valid_loader, class_weights, verbose=True):
         best_loss = float('inf')
@@ -89,9 +86,9 @@ class MoeTrading:
                     if verbose:
                         print(f"Early stopping at epoch {epoch+1}")
                     break
-            if best_state:
-                self.model.load_state_dict(best_state)
-                torch.save(best_state, f"{self.model_dir}/walk{walk_id}.pth")
+        if best_state:
+            self.model.load_state_dict(best_state)
+            torch.save(best_state, f"{self.model_dir}/walk{walk_id}.pth")
 
     def evaluate(self, walk_id, data_loader, class_weights, phase="test", verbose=True):
         self.model.eval()
@@ -122,6 +119,7 @@ class MoeTrading:
                 all_preds.extend(predicted.tolist())
 
         avg_loss = total_loss / total_samples
+
         if verbose:
             accuracy = total_correct / total_samples
             df_result = pd.DataFrame({
@@ -135,10 +133,10 @@ class MoeTrading:
             print(f"[Evaluation] Accuracy - {phase}: {accuracy*100:.2f}%")
         return avg_loss, total_correct, total_samples
     
-    def loss_function(self, outputs, expert_weights, labels, weight=None, label_smoothing=0.1, lambda_entropy=0.01):
-        ce_loss = F.cross_entropy(outputs, labels, weight=weight, label_smoothing=label_smoothing)
+    def loss_function(self, outputs, expert_weights, labels, weight=None):
+        ce_loss = F.cross_entropy(outputs, labels, weight=weight, label_smoothing=self.label_smoothing)
         entropy = - (expert_weights * torch.log(expert_weights + 1e-8)).sum(dim=1).mean()
-        return ce_loss + lambda_entropy * entropy
+        return ce_loss + self.lambda_entropy * entropy
     
     def run(self):
         total_correct = 0
@@ -152,10 +150,7 @@ class MoeTrading:
             df_valid = pd.read_csv(f"{self.input_dir}/walk{walk_id}_valid_labeled.csv")
             df_test  = pd.read_csv(f"{self.input_dir}/walk{walk_id}_test_labeled.csv")
 
-            print(df_train.head())  # Kiểm tra 5 dòng đầu tiên của DataFrame
-            print(df_train.shape)   # Kiểm tra kích thước của DataFrame
-            print(df_train.columns)  # Kiểm tra danh sách các cột
-            train_loader = DataLoader(ExpertDataset(df_train, self.model_type), batch_size=32, shuffle=True)
+            train_loader = DataLoader(ExpertDataset(df_train, self.model_type), batch_size=32, shuffle=False)
             valid_loader = DataLoader(ExpertDataset(df_valid, self.model_type), batch_size=32, shuffle=False)
             test_loader  = DataLoader(ExpertDataset(df_test, self.model_type),  batch_size=32, shuffle=False)
 
@@ -165,7 +160,7 @@ class MoeTrading:
                 self.model = MoeFlatNetwork(model_type=self.model_type).to(self.device)
             elif self.moe_model_type == "2d":
                 self.model = Moe2DNetwork(model_type=self.model_type).to(self.device)
-            self.optimizer = optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-5)
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
             self.train(walk_id, train_loader, valid_loader, class_weights)
             self.evaluate(walk_id, valid_loader, class_weights, phase="valid")

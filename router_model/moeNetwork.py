@@ -35,9 +35,6 @@ class MoeFlatNetwork(nn.Module):
         weights = expert_weights.unsqueeze(-1)  # (batch_size, num_experts, 1)
         output = torch.sum(weights * expert_values, dim=1)  # (batch_size, num_actions)
         
-        # if self.model_type == 'q_value':
-        #     output = F.softmax(output, dim=-1)
-
         return output, expert_weights
 
     def get_action(self, output):
@@ -65,6 +62,7 @@ class Moe2DNetwork(nn.Module):
             d_model=hidden_dim, nhead=4, dim_feedforward=256, dropout=0.1, batch_first=True
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=1)
+        self.norm = nn.LayerNorm(hidden_dim)
 
         # Router: from context → expert weights
         self.router_mlp = nn.Sequential(
@@ -74,15 +72,15 @@ class Moe2DNetwork(nn.Module):
             nn.Linear(hidden_dim, num_experts)
         )
 
-    def forward(self, expert_input, target_action=None, lambda_entropy=0.01):
+    def forward(self, expert_input):
         if self.model_type == 'action':
             # One-hot encode expert actions: (B, 100, 3)
             expert_input = F.one_hot(expert_input, num_classes=self.num_actions).float()
         
         # Encode each one-hot vector
         x = self.expert_encoder(expert_input) # (B, 100, hidden_dim)
-        x = x + self.positional_embedding     # (B, 100, hidden_dim)
-        x = self.transformer(x)               # (B, 100, hidden_dim)
+        x = self.transformer(x + self.positional_embedding)               # (B, 100, hidden_dim)
+        x = self.norm(x)
         pooled = x.mean(dim=1)                # (B, hidden_dim)
         
         router_logits = self.router_mlp(pooled) # (B, 100)

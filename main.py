@@ -60,13 +60,24 @@ if isMoe != '0':
         print("Invalid MoE model")
         sys.exit(1)
 
+    config = {
+        'lr': 1e-4,
+        'weight_decay': 1e-3,
+        'label_smoothing': 0.01,
+        'lambda_entropy': 0.1
+    }
+
     model = MoeTrading(
         market=market,
         model_name=model_name,
-        model_type="action", # "q_values" or "action"
+        model_type="q_values",  # hoặc "action"
+        moe_model_type=moe_model,  # hoặc "flat"
         num_epochs=num_epochs,
-        moe_model_type=moe_model # "flat" or "2d"
+        **config  # unpack grid search hyperparams
     )
+
+    model.run()
+    model.end()
 else:
     model = DeepQTrading(
         model_name=model_name,
@@ -79,10 +90,10 @@ else:
         isOnlyShort=isOnlyShort,
         )
    
-model.run()
+    model.run()
+    model.end()
 
 end_time = time.time()
 training_time = end_time - start_time
 print(f"\nThời gian training: {training_time:.2f} giây ({training_time/60:.2f} phút)")
 
-model.end()

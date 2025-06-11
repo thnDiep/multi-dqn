@@ -4,25 +4,14 @@ import pandas as pd
 from market_config import get_market_config
 
 def label_trading_actions(data, threshold=0.0001):
-    y_true = np.zeros(len(data), dtype=int)
-    last_action = 1
+    open_prices = data['Open'].values
+    close_prices = data['Close'].values
+    changes = (close_prices - open_prices) / open_prices
 
-    for i in range(len(data) - 1):
-        current_price = data.iloc[i]["Close"]
-        next_price = data.iloc[i + 1]["Close"]
-
-        changes = (next_price - current_price) / current_price
-
-        if changes >= threshold or (last_action == 1 and changes >= 0):
-            last_action = 1  # BUY
-            y_true[i] = 1
-        elif changes <= -threshold or (last_action == 2 and changes < 0):
-            last_action = 2  # SELL
-            y_true[i] = 2
-        else:
-            last_action = 0  # HOLD
-            y_true[i] = 0
-    return np.array(y_true)
+    labels = np.zeros(len(changes), dtype=int)
+    labels[changes >= threshold] = 1  # Long
+    labels[changes <= -threshold] = 2  # Short
+    return labels
 
 
 data = pd.read_csv("datasets/daxDay.csv") 
@@ -33,7 +22,7 @@ data.to_csv("datasets/daxDay_actions.csv", index=False)
 
 
 market = "dax"
-model_name = "time_frame_atn"
+model_name = "original"
 num_walks = get_market_config(market)["num_walks"]
 phase = ["train", "valid", "test"]
 

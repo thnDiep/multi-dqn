@@ -74,8 +74,7 @@ class Moe2DNetwork(nn.Module):
 
     def forward(self, expert_input):
         if self.model_type == 'action':
-            # One-hot encode expert actions: (B, 100, 3)
-            expert_input = F.one_hot(expert_input, num_classes=self.num_actions).float()
+            expert_input = F.one_hot(expert_input, num_classes=self.num_actions).float() # One-hot encode expert actions: (B, 100, 3)
         
         # Encode each one-hot vector
         x = self.expert_encoder(expert_input) # (B, 100, hidden_dim)

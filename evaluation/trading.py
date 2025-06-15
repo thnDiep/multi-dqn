@@ -13,7 +13,7 @@ class IndayTrading:
         self.num_sum = 0
         self.values = []
         self.columns = ["Iteration", "Reward%", "#Wins", "#Losses", "Dollars", "Coverage", "Accuracy"]
-        self.final_action_column = "ensemble"
+        self.final_action_column = "label"
 
     def trading_for_each_walk(self, df, current_walk):
         num = 0
@@ -31,15 +31,17 @@ class IndayTrading:
 
             if date in self.market_data.index:
                 if (action == 1):  # Long
-                    rew += (close_price - open_price) / open_price
-                    pos += 1 if rew > 0 else 0
-                    neg += 0 if rew > 0 else 1
+                    pnl = (close_price - open_price) / open_price
+                    rew += pnl
+                    pos += 1 if pnl > 0 else 0
+                    neg += 1 if pnl < 0 else 0
                     doll += (close_price - open_price) * 50
                     cov += 1
                 elif (action == 2):  # Short
-                    rew += -(close_price - open_price) / open_price
-                    neg += 0 if -rew > 0 else 1
-                    pos += 1 if -rew > 0 else 0
+                    pnl = -(close_price - open_price) / open_price
+                    rew += pnl
+                    pos += 1 if pnl > 0 else 0
+                    neg += 1 if pnl < 0 else 0
                     doll += -(close_price - open_price) * 50
                     cov += 1
         
@@ -110,7 +112,7 @@ class RealisticTrading:
         self.walk_count = 0
         self.positions = []  # Lưu trữ tất cả các vị thế
 
-        self.final_action_column = "ensemble"
+        self.final_action_column = "label"
 
         self.values = []
         self.columns = ["Iteration", "Final Balance", "Total Trades", "Return %", "W/L Rate", "Profit Factor", "Avg Win", "Avg Loss", "Max Drawdown", "Sharpe Ratio"]

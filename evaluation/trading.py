@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 class IndayTrading:
-    def __init__(self, market_data):
+    def __init__(self, market_data, initial_balance=10000, risk_per_trade=0.2):
         self.market_data = market_data
+        self.initial_balance = initial_balance
+        self.risk_per_trade = risk_per_trade  # Rủi ro tối đa cho mỗi giao dịch (2%)
         self.doll_sum = 0
         self.rew_sum = 0
         self.pos_sum = 0
@@ -12,8 +14,39 @@ class IndayTrading:
         self.cov_sum = 0
         self.num_sum = 0
         self.values = []
-        self.columns = ["Iteration", "Reward%", "#Wins", "#Losses", "Dollars", "Coverage", "Accuracy"]
-        self.final_action_column = "label"
+        self.daily_returns = []
+        self.equity_curve = []
+        self.columns = ["Iteration", "Reward%", "#W", "#L", "W/L", "Dollars", "Coverage", "Accuracy", "Sharpe", "MDD%", "Profit Factor"]
+        self.final_action_column = "ensemble"
+
+    def calculate_sharpe_ratio(self, returns, risk_free_rate=0.02):
+        if not returns:
+            return 0
+        returns = np.array(returns)
+        excess_returns = returns - risk_free_rate/252
+        if len(excess_returns) < 2:
+            return 0
+        return np.sqrt(252) * (np.mean(excess_returns) / np.std(excess_returns))
+
+    def calculate_mdd(self, equity_curve):
+        if not equity_curve:
+            return 0
+        
+        equity_curve = np.array(equity_curve)
+        peak = np.maximum.accumulate(equity_curve)
+        drawdown = (peak - equity_curve) / peak
+        mdd = np.max(drawdown) * 100
+        return mdd
+
+    def calculate_profit_factor(self, gains, losses):
+        if not losses or sum(losses) == 0:
+            return float('inf')
+        
+        return sum(gains) / abs(sum(losses))
+
+    def calculate_position_size(self, balance, price):
+        risk_amount = balance * self.risk_per_trade
+        return risk_amount / price
 
     def trading_for_each_walk(self, df, current_walk):
         num = 0
@@ -22,6 +55,12 @@ class IndayTrading:
         neg = 0
         doll = 0
         cov = 0
+
+        balance = self.initial_balance
+        daily_returns = []
+        equity_curve = [balance]
+        gains = []
+        losses = []
         
         for date, i in df.iterrows():
             num += 1
@@ -30,32 +69,58 @@ class IndayTrading:
             action = i[self.final_action_column]
 
             if date in self.market_data.index:
+                position_size = self.calculate_position_size(balance, open_price)
+
                 if (action == 1):  # Long
-                    pnl = (close_price - open_price) / open_price
-                    rew += pnl
-                    pos += 1 if pnl > 0 else 0
-                    neg += 1 if pnl < 0 else 0
-                    doll += (close_price - open_price) * 50
+                    pct_return = (close_price - open_price) / open_price
+                    rew += pct_return
+                    pos += 1 if pct_return > 0 else 0
+                    neg += 1 if pct_return < 0 else 0
+                    abs_return = (close_price - open_price) * position_size
+                    doll += abs_return
+                    balance += abs_return
                     cov += 1
+                    daily_returns.append(pct_return)
+                    equity_curve.append(balance)
+                    if pct_return > 0:
+                        gains.append(abs_return)
+                    else:
+                        losses.append(abs_return)
+                        
                 elif (action == 2):  # Short
-                    pnl = -(close_price - open_price) / open_price
-                    rew += pnl
-                    pos += 1 if pnl > 0 else 0
-                    neg += 1 if pnl < 0 else 0
-                    doll += -(close_price - open_price) * 50
+                    pct_return = -(close_price - open_price) / open_price
+                    rew += pct_return
+                    pos += 1 if pct_return > 0 else 0
+                    neg += 1 if pct_return < 0 else 0
+                    abs_return = -(close_price - open_price) * position_size
+                    doll += abs_return
+                    balance += abs_return
                     cov += 1
+                    daily_returns.append(pct_return)
+                    equity_curve.append(balance)
+                    if pct_return > 0:
+                        gains.append(abs_return)
+                    else:
+                        losses.append(abs_return)
         
         acc = pos / cov if cov > 0 else 0
         cov_rate = cov / num if num > 0 else 0
+        sharpe = self.calculate_sharpe_ratio(daily_returns)
+        mdd_pct = self.calculate_mdd(equity_curve)
+        profit_factor = self.calculate_profit_factor(gains, losses)
 
         self.values.append([
             str(round(current_walk,2)),
-            str(round(rew,2)),
+            str(round(rew * 100, 2)),
             str(round(pos,2)),
             str(round(neg,2)),
+            str(round(pos/neg,2)) if neg > 0 else float('inf'),
             str(round(doll,2)),
             str(round(cov_rate,2)),
-            str(round(acc,2))
+            str(round(acc,2)),
+            str(round(sharpe,2)),
+            str(round(mdd_pct,2)),
+            str(round(profit_factor,2)) if profit_factor != float('inf') else float('inf'),
         ])
         
         self.rew_sum += rew
@@ -64,17 +129,29 @@ class IndayTrading:
         self.doll_sum += doll
         self.cov_sum += cov
         self.num_sum += num
-
+        self.daily_returns.extend(daily_returns)
+        self.equity_curve.extend(equity_curve)
 
     def get_total_walk_result(self):
+        total_sharpe = self.calculate_sharpe_ratio(self.daily_returns)
+        total_mdd_pct = self.calculate_mdd(self.equity_curve)
+        total_profit_factor = self.calculate_profit_factor(
+            [r for r in self.daily_returns if r > 0],
+            [r for r in self.daily_returns if r < 0]
+        )
+
         self.values.append([
             "sum",
-            str(round(self.rew_sum,2)),
+            str(round(self.rew_sum * 100,2)),
             str(round(self.pos_sum,2)),
             str(round(self.neg_sum,2)),
+            str(round(self.pos_sum/self.neg_sum,2)) if self.neg_sum > 0 else float('inf'),
             str(round(self.doll_sum,2)),
             str(round(self.cov_sum/self.num_sum,2) if self.num_sum > 0 else 0),
-            str(round(self.pos_sum/self.cov_sum,2) if self.cov_sum > 0 else 0)
+            str(round(self.pos_sum/self.cov_sum,2) if self.cov_sum > 0 else 0),
+            str(round(total_sharpe,2)),
+            str(round(total_mdd_pct,2)),
+            str(round(total_profit_factor,2)) if total_profit_factor != float('inf') else float('inf'),
         ])
         return self.values, self.columns
 
@@ -112,7 +189,7 @@ class RealisticTrading:
         self.walk_count = 0
         self.positions = []  # Lưu trữ tất cả các vị thế
 
-        self.final_action_column = "label"
+        self.final_action_column = "ensemble"
 
         self.values = []
         self.columns = ["Iteration", "Final Balance", "Total Trades", "Return %", "W/L Rate", "Profit Factor", "Avg Win", "Avg Loss", "Max Drawdown", "Sharpe Ratio"]

@@ -63,7 +63,7 @@ class Evaluation:
         inday_values, inday_columns = inday_trading.get_total_walk_result()
         realistic_values, realistic_columns = realistic_trading.get_total_walk_result()
         
-        realistic_trading.plot_equity_curve(f"{self.result_dir}/equity_curve_{consensus_threshold}.pdf")
+        # realistic_trading.plot_equity_curve(f"{self.result_dir}/equity_curve_{consensus_threshold}.pdf")
 
         return {
             'inday': {'values': inday_values, 'columns': inday_columns},
@@ -80,8 +80,8 @@ class Evaluation:
         titles = ["FULL ENSEMBLE", "90% ENSEMBLE", "80% ENSEMBLE", "70% ENSEMBLE", "60% ENSEMBLE"]
         
         for threshold, title in zip(thresholds, titles):
-            results = self.evaluate(threshold, "valid")
-            inday_valid = results['inday']
+            # results = self.evaluate(threshold, "valid")
+            # inday_valid = results['inday']
 
             results = self.evaluate(threshold, "test")
             inday_test = results['inday']
@@ -89,16 +89,16 @@ class Evaluation:
 
             plt.figure(figsize=(12, 5))
             
-            # Validation results
-            plt.subplot(1, 2, 1)
-            plt.axis('off')
-            t = plt.table(cellText=inday_valid['values'], colLabels=inday_valid['columns'], fontsize=30, loc='center')
-            t.auto_set_font_size(False)
-            t.set_fontsize(6)
-            plt.title("Valid")
+            # # Validation results
+            # plt.subplot(1, 2, 1)
+            # plt.axis('off')
+            # t = plt.table(cellText=inday_valid['values'], colLabels=inday_valid['columns'], fontsize=30, loc='center')
+            # t.auto_set_font_size(False)
+            # t.set_fontsize(6)
+            # plt.title("Valid")
             
             # Test results
-            plt.subplot(1, 2, 2)
+            # plt.subplot(1, 2, 2)
             plt.axis('off')
             t = plt.table(cellText=inday_test['values'], colLabels=inday_test['columns'], fontsize=30, loc='center')
             t.auto_set_font_size(False)
@@ -142,7 +142,7 @@ class Evaluation:
         inday_values, inday_columns = inday_trading.get_total_walk_result()
         realistic_values, realistic_columns = realistic_trading.get_total_walk_result()
         
-        realistic_trading.plot_equity_curve(f"{self.result_dir}/equity_curve.pdf")
+        # realistic_trading.plot_equity_curve(f"{self.result_dir}/equity_curve.pdf")
 
         return {
             'inday': {'values': inday_values, 'columns': inday_columns},
@@ -153,25 +153,11 @@ class Evaluation:
         """Plot MOE results tables with different thresholds"""
         pdf_inday = PdfPages(f"{self.result_dir}/{ensemble_type}_{model_type}_{moe_model_type}.pdf")
 
-        results = self.evaluate_for_moe("valid")
-        inday_valid = results['inday']
-
         results = self.evaluate_for_moe("test")
         inday_test = results['inday']
         realistic_test = results['realistic']
 
         plt.figure(figsize=(12, 5))
-            
-        # Validation results
-        plt.subplot(1, 2, 1)
-        plt.axis('off')
-        t = plt.table(cellText=inday_valid['values'], colLabels=inday_valid['columns'], fontsize=30, loc='center')
-        t.auto_set_font_size(False)
-        t.set_fontsize(6)
-        plt.title("Valid")
-        
-        # Test results
-        plt.subplot(1, 2, 2)
         plt.axis('off')
         t = plt.table(cellText=inday_test['values'], colLabels=inday_test['columns'], fontsize=30, loc='center')
         t.auto_set_font_size(False)

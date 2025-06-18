@@ -40,8 +40,8 @@ os.makedirs(action_output_dir, exist_ok=True)
 
 for i in range(num_walks):
     for p in phase:
-        q_values_df = pd.read_csv(f"{input_q_value_dir}/{p}/q_values_walk{i}.csv")
-        action_values_df = pd.read_csv(f"{input_action_dir}/walk{i}ensemble_{p}.csv")
+        q_values_df = pd.read_csv(f"{input_q_value_dir}/{p}/q_values_walk{i}.csv").iloc[2:]
+        action_values_df = pd.read_csv(f"{input_action_dir}/walk{i}ensemble_{p}.csv").iloc[2:]
 
         if 'Date' not in q_values_df.columns:
             q_values_df.reset_index(inplace=True)

@@ -13,6 +13,7 @@ from router_model.moeNetwork import MoeFlatNetwork, Moe2DNetwork
 from evaluation.evaluation import Evaluation
 from utils.market_config import get_market_config
 from router_model.expertDataset import ExpertDataset
+from utils.select_top_k import select_top_k_experts_by_group
 
 torch.manual_seed(42)
 np.random.seed(42)
@@ -39,9 +40,9 @@ class MoeTrading:
         # Prepare folder paths
         self.input_dir = f"./Output/labeled/{model_type}/{market}/{model_name}"
 
-        self.ensemble_dir = f"./Output/moe/ensemble/{model_type}/{market}/{model_name}_lr({lr})_wd({weight_decay})_ls({label_smoothing})_le({lambda_entropy})"
-        self.model_dir = f"./Output/moe/models/{model_type}/{market}/{model_name}_lr({lr})_wd({weight_decay})_ls({label_smoothing})_le({lambda_entropy})"
-        self.result_dir = f"./Output/moe/results/{model_type}/{market}/{model_name}_lr({lr})_wd({weight_decay})_ls({label_smoothing})_le({lambda_entropy})"
+        self.ensemble_dir = f"./Output/moe/ensemble/{model_type}/{market}/{model_name}_{moe_model_type}"
+        self.model_dir = f"./Output/moe/models/{model_type}/{market}/{model_name}_{moe_model_type}"
+        self.result_dir = f"./Output/moe/results/{model_type}/{market}/{model_name}"
     
         os.makedirs(self.ensemble_dir, exist_ok=True)
         os.makedirs(self.model_dir, exist_ok=True)
@@ -51,6 +52,10 @@ class MoeTrading:
         best_loss = float('inf')
         best_state = None
         patience_counter = 0
+
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, mode='min', factor=0.5, patience=3, verbose=False
+        )
 
         for epoch in range(self.num_epochs):
             self.model.train()
@@ -63,7 +68,7 @@ class MoeTrading:
                 
                 self.optimizer.zero_grad()
                 outputs, expert_weights = self.model(expert_data)
-                loss = self.loss_function(outputs, expert_weights, labels, class_weights)
+                loss = self.loss_function(outputs, expert_weights, labels)
                 loss.backward()
                 self.optimizer.step()
                 total_loss += loss.item() * labels.size(0)
@@ -72,8 +77,11 @@ class MoeTrading:
             train_loss = total_loss / total_samples
             val_loss, _, _ = self.evaluate(walk_id, valid_loader, class_weights, phase="valid", verbose=False)
 
+            scheduler.step(val_loss)
+
             if verbose:
-                print(f"Epoch {epoch+1}: Train Loss={train_loss:.4f}, Val Loss={val_loss:.4f}") 
+                current_lr = self.optimizer.param_groups[0]['lr']
+                print(f"Epoch {epoch+1}: Train Loss={train_loss:.4f}, Val Loss={val_loss:.4f}, LR={current_lr:.6f}")
             
             # Early stopping check
             if val_loss < best_loss:
@@ -108,7 +116,7 @@ class MoeTrading:
 
                 outputs, expert_weights = self.model(expert_data)
                 predicted = self.model.get_action(outputs)
-                loss = self.loss_function(outputs, expert_weights, labels, class_weights)
+                loss = self.loss_function(outputs, expert_weights, labels)
 
                 total_loss += loss.item() * labels.size(0)
                 total_samples += labels.size(0)
@@ -153,13 +161,17 @@ class MoeTrading:
             train_loader = DataLoader(ExpertDataset(df_train, self.model_type), batch_size=32, shuffle=False)
             valid_loader = DataLoader(ExpertDataset(df_valid, self.model_type), batch_size=32, shuffle=False)
             test_loader  = DataLoader(ExpertDataset(df_test, self.model_type),  batch_size=32, shuffle=False)
+            
+            # df_train = select_top_k_experts_by_group(df_train, k=30)
+            # df_valid = select_top_k_experts_by_group(df_valid, k=30)
+            # df_test  = select_top_k_experts_by_group(df_test,  k=30)
 
             class_weights = self.calculate_class_weights(df_train)
 
             if self.moe_model_type == "flat":
-                self.model = MoeFlatNetwork(model_type=self.model_type).to(self.device)
+                self.model = MoeFlatNetwork(num_experts=100, model_type=self.model_type).to(self.device)
             elif self.moe_model_type == "2d":
-                self.model = Moe2DNetwork(model_type=self.model_type).to(self.device)
+                self.model = Moe2DNetwork(num_experts=100, model_type=self.model_type).to(self.device)
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
             self.train(walk_id, train_loader, valid_loader, class_weights)

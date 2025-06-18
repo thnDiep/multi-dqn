@@ -61,10 +61,12 @@ if isMoe != '0':
         sys.exit(1)
 
     config = {
-        'lr': 1e-4,
-        'weight_decay': 1e-3,
-        'label_smoothing': 0.01,
-        'lambda_entropy': 0.1
+        'lr': 5e-4,
+        # 'weight_decay': 1e-3,
+        'weight_decay': 0.0,
+        'label_smoothing': 0.0,
+        # 'lambda_entropy': 0.1
+        'lambda_entropy': 0.0
     }
 
     model = MoeTrading(

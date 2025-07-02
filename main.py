@@ -78,11 +78,11 @@ if isMoe != '0':
     )
 
     model.run()
-    model.end()
+    # model.end()
 else:
     model = DeepQTrading(
-        model_name=model_name,
         market=market,
+        model_name=model_name,
         explorations=[(0.2,num_epochs)],
         trainSize=datetime.timedelta(days=360*5),
         validationSize=datetime.timedelta(days=30*6),
@@ -91,7 +91,7 @@ else:
         isOnlyShort=isOnlyShort,
         )
    
-    model.run()
+    # model.run()
     model.end()
 
 end_time = time.time()

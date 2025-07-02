@@ -42,7 +42,7 @@ class DeepQTrading:
     # nbActions: number of decisions (0-Hold 1-Long 2-Short)
     # nOutput is the number of walks. We are doing 5 walks.
     # operationCost: Price for the transaction (we set they are free)
-    def __init__(self, model_name, market, explorations, trainSize, validationSize, testSize, nbActions, isOnlyShort):
+    def __init__(self, market, model_name, explorations, trainSize, validationSize, testSize, nbActions, isOnlyShort):
         # Prepare model and market config
         self.model_name = model_name
         self.model, self.custom_objects = build_model(model_name)
@@ -57,7 +57,7 @@ class DeepQTrading:
 
         self.ensemble_dir = f"./Output/ensemble/{market}/{model_name}"
 
-        self.result_dir = f"./Output/results/{market}/{model_name}"
+        self.result_dir = f"./Output/results/{market}/"
 
         model_dir = f"./Output/models/{market}"
         self.weights_file = f"{model_dir}/q-{model_name}.weights"

@@ -41,7 +41,7 @@ class MoeTrading:
 
         self.ensemble_dir = f"./Output_moe/ensemble/{market}/{model_name}_{moe_model_type}"
         self.model_dir = f"./Output_moe/models/{market}/{model_name}_{moe_model_type}"
-        self.result_dir = f"./Output_moe/results/{market}/{model_name}"
+        self.result_dir = f"./Output_moe/results/{market}/"
     
         os.makedirs(self.ensemble_dir, exist_ok=True)
         os.makedirs(self.model_dir, exist_ok=True)
@@ -210,5 +210,5 @@ class MoeTrading:
             take_profit_pct=0.04
         )
 
-        evaluation.plot_results(ensemble_type="moe", model_type=self.model_type, moe_model_type=self.moe_model_type)
+        evaluation.plot_results(ensemble_type="moe", moe_model_type=self.moe_model_type)
         print(f"Evaluation completed for {self.market}. Check the Output directory for results.")

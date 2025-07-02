@@ -3,11 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class MoeFlatNetwork(nn.Module):
-    def __init__(self, num_experts=100, num_actions=3, hidden_dim=128, model_type='action'):
+    def __init__(self, num_experts=100, num_actions=3, hidden_dim=128):
         super().__init__()
         self.num_experts = num_experts
         self.num_actions = num_actions
-        self.model_type = model_type
 
         input_dim = num_experts * num_actions
 
@@ -20,20 +19,11 @@ class MoeFlatNetwork(nn.Module):
     def forward(self, expert_input):
         batch_size = expert_input.size(0)
         
-        if self.model_type == 'action':
-            # expert_input: (batch_size, num_experts)
-            expert_one_hot = F.one_hot(expert_input, num_classes=self.num_actions).float()
-            router_input = expert_one_hot.view(batch_size, -1)  # (batch_size, 100*3)
-            expert_values = expert_one_hot
-        else:
-            router_input = expert_input.view(batch_size, -1)
-            expert_values = expert_input
-
-        router_logits = self.router(router_input)  # (batch_size, num_experts)
+        router_logits = self.router(expert_input.view(batch_size, -1))  # (batch_size, num_experts)
         expert_weights = F.softmax(router_logits, dim=-1)
 
         weights = expert_weights.unsqueeze(-1)  # (batch_size, num_experts, 1)
-        output = torch.sum(weights * expert_values, dim=1)  # (batch_size, num_actions)
+        output = torch.sum(weights * expert_input, dim=1)  # (batch_size, num_actions)
         
         return output, expert_weights
 
@@ -41,12 +31,10 @@ class MoeFlatNetwork(nn.Module):
         return torch.argmax(output, dim=-1)
 
 class Moe2DNetwork(nn.Module):
-    def __init__(self, num_experts=100, num_actions=3, hidden_dim=128, model_type='action', class_weights=None):
+    def __init__(self, num_experts=100, num_actions=3, hidden_dim=128):
         super().__init__()
         self.num_experts = num_experts
         self.num_actions = num_actions
-        self.model_type = model_type
-        self.class_weights = class_weights
 
         self.expert_encoder = nn.Sequential(
             nn.Linear(num_actions, hidden_dim),
@@ -73,10 +61,6 @@ class Moe2DNetwork(nn.Module):
         )
 
     def forward(self, expert_input):
-        if self.model_type == 'action':
-            expert_input = F.one_hot(expert_input, num_classes=self.num_actions).float() # One-hot encode expert actions: (B, 100, 3)
-        
-        # Encode each one-hot vector
         x = self.expert_encoder(expert_input) # (B, 100, hidden_dim)
         x = self.transformer(x + self.positional_embedding)               # (B, 100, hidden_dim)
         x = self.norm(x)

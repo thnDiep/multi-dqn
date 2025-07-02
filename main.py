@@ -72,7 +72,6 @@ if isMoe != '0':
     model = MoeTrading(
         market=market,
         model_name=model_name,
-        model_type="q_values",  # hoặc "action"
         moe_model_type=moe_model,  # hoặc "flat"
         num_epochs=num_epochs,
         **config  # unpack grid search hyperparams

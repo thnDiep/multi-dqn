@@ -22,12 +22,11 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 class MoeTrading:
-    def __init__(self, market, model_name, model_type, num_epochs=100, moe_model_type="flat", lr=1e-3, weight_decay=1e-5, label_smoothing=0.01, lambda_entropy=0.1):
+    def __init__(self, market, model_name, num_epochs=100, moe_model_type="flat", lr=1e-3, weight_decay=1e-5, label_smoothing=0.01, lambda_entropy=0.1):
         self.market = market
         self.num_walks = get_market_config(market)['num_walks']
         self.model_name = model_name
         self.num_epochs = num_epochs
-        self.model_type = model_type
         self.moe_model_type = moe_model_type
         self.patience = 10
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -38,11 +37,11 @@ class MoeTrading:
         self.lambda_entropy = lambda_entropy
 
         # Prepare folder paths
-        self.input_dir = f"./Output/labeled/{model_type}/{market}/{model_name}"
+        self.input_dir = f"./Output_moe/data/{market}/{model_name}"
 
-        self.ensemble_dir = f"./Output/moe/ensemble/{model_type}/{market}/{model_name}_{moe_model_type}"
-        self.model_dir = f"./Output/moe/models/{model_type}/{market}/{model_name}_{moe_model_type}"
-        self.result_dir = f"./Output/moe/results/{model_type}/{market}/{model_name}"
+        self.ensemble_dir = f"./Output_moe/ensemble/{market}/{model_name}_{moe_model_type}"
+        self.model_dir = f"./Output_moe/models/{market}/{model_name}_{moe_model_type}"
+        self.result_dir = f"./Output_moe/results/{market}/{model_name}"
     
         os.makedirs(self.ensemble_dir, exist_ok=True)
         os.makedirs(self.model_dir, exist_ok=True)
@@ -158,9 +157,9 @@ class MoeTrading:
             df_valid = pd.read_csv(f"{self.input_dir}/walk{walk_id}_valid_labeled.csv")
             df_test  = pd.read_csv(f"{self.input_dir}/walk{walk_id}_test_labeled.csv")
 
-            train_loader = DataLoader(ExpertDataset(df_train, self.model_type), batch_size=32, shuffle=False)
-            valid_loader = DataLoader(ExpertDataset(df_valid, self.model_type), batch_size=32, shuffle=False)
-            test_loader  = DataLoader(ExpertDataset(df_test, self.model_type),  batch_size=32, shuffle=False)
+            train_loader = DataLoader(ExpertDataset(df_train), batch_size=32)
+            valid_loader = DataLoader(ExpertDataset(df_valid), batch_size=32)
+            test_loader  = DataLoader(ExpertDataset(df_test),  batch_size=32)
             
             # df_train = select_top_k_experts_by_group(df_train, k=30)
             # df_valid = select_top_k_experts_by_group(df_valid, k=30)
@@ -169,9 +168,9 @@ class MoeTrading:
             class_weights = self.calculate_class_weights(df_train)
 
             if self.moe_model_type == "flat":
-                self.model = MoeFlatNetwork(num_experts=100, model_type=self.model_type).to(self.device)
+                self.model = MoeFlatNetwork(num_experts=100).to(self.device)
             elif self.moe_model_type == "2d":
-                self.model = Moe2DNetwork(num_experts=100, model_type=self.model_type).to(self.device)
+                self.model = Moe2DNetwork(num_experts=100).to(self.device)
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
             self.train(walk_id, train_loader, valid_loader, class_weights)

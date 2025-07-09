@@ -12,10 +12,10 @@ import time
 import datetime
 
 #This is the class call for the Agent which will perform the experiment
-from expert_model.attention_network import ModelType
+from expert.attention_network import ModelType
 from utils.market_config import MARKET_CONFIG
-from expert_model.deepQTrading import DeepQTrading
-from router_model.moeTrading import MoeTrading
+from expert.deepQTrading import DeepQTrading
+from router.moeTrading import MoeTrading
 
 # sys.argv = ['main.py', 'dax', 'original', '1']
 

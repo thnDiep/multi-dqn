@@ -79,7 +79,7 @@ class SpEnv(gym.Env):
         #The limit is the number of open values in the dataset (could be any other value)
         self.limit = len(Open)
         #organizing the dataset as a list of dictionaries 
-        for i in range(0,self.limit): 
+        for i in range(0,self.limit):
             self.history.append({'Date' : Date[i],'Time' : Time[i], 'Open': Open[i], 'High': High[i], 'Low': Low[i], 'Close': Close[i]})
         
         #Next observation starts
@@ -209,6 +209,16 @@ class SpEnv(gym.Env):
         
         
         #The state is prepared by the environment, which is simply the feature vector
+        # print(date)
+        # print("==")
+        # print(numpy.array(
+        #     [list(
+        #         map(
+        #             lambda x: x["Close"],
+        #                 self.history[self.currentObservation-self.observationWindow:self.currentObservation]  +
+        #                 self.dayData.get(date) +
+        #                 self.weekData.get(date)))]))
+
         return  numpy.array(
             [list(
                 map(

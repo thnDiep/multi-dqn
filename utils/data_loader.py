@@ -22,7 +22,7 @@ class DataLoader:
         self.ensemble_dir = f"./Output/ensemble/{market}/{model_name}"
         self.q_values_dir = f"./Output/q_values/{market}/{model_name}"
         self.output_dir = f"./Output_moe/data/{market}/{model_name}"
-        os.makedirs(self.output_dir, exist_ok=True)
+
 
         self.price_df = pd.read_csv(f"./datasets/{market}Day.csv")
         self.price_df['Date'] = pd.to_datetime(self.price_df['Date'])
@@ -50,11 +50,18 @@ class DataLoader:
         """
         rows = []
         for date in dates:
-            idx = self._find_history_index(date)
-            hourly = self.history[idx - self.observation_window:idx]
+            current_date = pd.to_datetime(date).date()
+            prev_indices = [
+                (d, idx) for d, idx in self.history_index.items()
+                if d.date() < current_date
+            ]
 
-            date_str = pd.to_datetime(date).strftime("%m/%d/%Y")
+            if not prev_indices:
+                raise ValueError(f"No history before {date}")
+            prev_idx = max(prev_indices, key=lambda x: x[0])[1]
+            hourly = self.history[prev_idx - self.observation_window + 1 : prev_idx + 1]
 
+            date_str = current_date.strftime("%m/%d/%Y")
             daily = self.dayData.get(date_str)
             weekly = self.weekData.get(date_str)
 
@@ -136,9 +143,12 @@ class DataLoader:
         q_values_df['Date'] = pd.to_datetime(q_values_df['Date'])
         return q_values_df
 
-    def process_all_walks(self):
+    def process_all_walks(self, phase="valid"):
+        output_dir = f"{self.output_dir}/{phase}"
+        os.makedirs(output_dir, exist_ok=True)
+
         for i in range(self.num_walks):
-            action_path = os.path.join(self.ensemble_dir, f"walk{i}ensemble_valid.csv")
+            action_path = os.path.join(self.ensemble_dir, f"walk{i}ensemble_{phase}.csv")
            
             if not os.path.exists(action_path):
                 raise FileNotFoundError(f"Action file not found: {action_path}")
@@ -148,20 +158,20 @@ class DataLoader:
 
             merged_df = pd.merge(action_df, self.price_df, on='Date', how='left')
             reward = self.add_reward_features(merged_df)
-            reward.to_csv(os.path.join(self.output_dir, f"walk{i}_reward.csv"), index=False)
+            reward.to_csv(os.path.join(output_dir, f"walk{i}_reward.csv"), index=False)
             
             risk = self.add_risk_features(reward, self.rolling_windows)
-            risk.to_csv(os.path.join(self.output_dir, f"walk{i}_risk.csv"), index=False)
+            risk.to_csv(os.path.join(output_dir, f"walk{i}_risk.csv"), index=False)
 
-            qvalues_path = os.path.join(self.q_values_dir, f"valid/q_values_walk{i}.csv")
+            qvalues_path = os.path.join(self.q_values_dir, f"{phase}/q_values_walk{i}.csv")
 
             if not os.path.exists(qvalues_path):
                 raise FileNotFoundError(f"Q-values file not found: {qvalues_path}")
             
             q_values = pd.read_csv(qvalues_path).iloc[2:]
             q_values = self.add_qvalues_features(q_values)
-            q_values.to_csv(os.path.join(self.output_dir, f"walk{i}_qvalues.csv"), index=False)
+            q_values.to_csv(os.path.join(output_dir, f"walk{i}_qvalues.csv"), index=False)
 
             # Save context features
             context = self.get_context_features(merged_df['Date'])
-            context.to_csv(os.path.join(self.output_dir, f"walk{i}_context.csv"), index=False)
+            context.to_csv(os.path.join(output_dir, f"walk{i}_context.csv"), index=False)

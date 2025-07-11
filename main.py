@@ -17,7 +17,7 @@ from utils.market_config import MARKET_CONFIG
 from expert.deepQTrading import DeepQTrading
 from router.moeTrading import MoeTrading
 
-# sys.argv = ['main.py', 'dax', 'original', '1']
+sys.argv = ['main.py', 'dax', 'original', '1']
 
 # Check input parameters
 if len(sys.argv) < 4:
@@ -78,7 +78,7 @@ if isMoe != '0':
     )
 
     model.run()
-    # model.end()
+    model.end()
 else:
     model = DeepQTrading(
         market=market,

@@ -107,7 +107,7 @@ class Evaluation:
         result  = inday_trading.get_total_walk_result()
         return  result
 
-    def plot_moe_results(self, ensemble_type, model_type=None, moe_model_type=None):
+    def plot_moe_results(self, ensemble_type, moe_model_type=None):
         pdf_inday = PdfPages(f"{self.result_dir}/{ensemble_type}_{moe_model_type}.pdf")
         results = self.evaluate_for_moe("test")
 

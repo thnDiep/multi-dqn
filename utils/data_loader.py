@@ -23,7 +23,6 @@ class DataLoader:
         self.q_values_dir = f"./Output/q_values/{market}/{model_name}"
         self.output_dir = f"./Output_moe/data/{market}/{model_name}"
 
-
         self.price_df = pd.read_csv(f"./datasets/{market}Day.csv")
         self.price_df['Date'] = pd.to_datetime(self.price_df['Date'])
 
@@ -58,6 +57,7 @@ class DataLoader:
 
             if not prev_indices:
                 raise ValueError(f"No history before {date}")
+
             prev_idx = max(prev_indices, key=lambda x: x[0])[1]
             hourly = self.history[prev_idx - self.observation_window + 1 : prev_idx + 1]
 
@@ -69,10 +69,29 @@ class DataLoader:
                 (x["Close"]-x["Open"])/x["Open"]
                 for x in hourly + daily + weekly
             ]
+
             rows.append([date] + vec)
 
         columns = ['Date'] + [f'f{i}' for i in range(68)]
         return pd.DataFrame(rows, columns=columns)
+
+    def add_labels_to_context_df(self, context_df, threshold=0.0001):
+        context_df['Date'] = pd.to_datetime(context_df['Date'])
+        self.price_df['Date'] = pd.to_datetime(self.price_df['Date'])
+
+        # Merge
+        merged = context_df.merge(self.price_df[['Date', 'Open', 'Close']], on='Date', how='left')
+        changes = (merged['Close'] - merged['Open']) / merged['Open']
+
+        labels = np.zeros(len(changes), dtype=int) # HOLD
+        labels[changes >= threshold] = Action.BUY.value
+        labels[changes <= -threshold] = Action.SELL.value
+        merged['Label'] = labels
+
+        # Giữ nguyên thứ tự các feature
+        feature_cols = [col for col in context_df.columns if col != 'Date']
+        output_cols = ['Date'] + feature_cols + ['Label']
+        return merged[output_cols]
 
     def add_reward_features(self, df):
         result = pd.DataFrame()
@@ -174,4 +193,5 @@ class DataLoader:
 
             # Save context features
             context = self.get_context_features(merged_df['Date'])
-            context.to_csv(os.path.join(output_dir, f"walk{i}_context.csv"), index=False)
+            labeled_context = self.add_labels_to_context_df(context)
+            labeled_context.to_csv(os.path.join(output_dir, f"walk{i}_context.csv"), index=False)

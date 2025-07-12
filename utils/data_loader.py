@@ -119,9 +119,10 @@ class DataLoader:
             reward[(action == Action.BUY.value) & (df['Close'] < df['Open'])] = base_reward
             reward[(action == Action.SELL.value) & (df['Close'] > df['Open'])] = -base_reward
 
-            result[f'e{i}_reward'] = reward
-            result[f'e{i}_acc'] = accuracy
-            result[f'e{i}_equity'] = (1.0 + reward).cumprod()
+            result[f'e{i}_reward'] = reward.shift(1)
+            result[f'e{i}_acc'] = accuracy.shift(1)
+            result[f'e{i}_equity'] = (1.0 + reward).cumprod().shift(1)
+            result = result.fillna(0)
         return result
     
     def add_risk_features(self, reward_df, windows):
@@ -162,6 +163,7 @@ class DataLoader:
 
         q_values_df = q_values_df.rename(columns=rename_dict)
         q_values_df['Date'] = pd.to_datetime(q_values_df['Date'])
+        q_values_df = q_values_df.fillna(0)
         return q_values_df
 
     def process_all_walks(self, phase="valid"):

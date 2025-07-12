@@ -96,7 +96,7 @@ class MoeTrading:
                 action_logits, gate_weights, expert_logits = self.model(context, qvalue, reward, risk)
                 predicted = self.model.get_action(action_logits)
                 loss = self.loss_function(action_logits, label, expert_logits, gate_weights)
-
+                # print("action_probs (softmax):", F.softmax(action_logits, dim=-1))
                 total_loss += loss.item() * label.size(0)
                 total_samples += label.size(0)
                 total_correct += (predicted == label).sum().item()
@@ -151,50 +151,48 @@ class MoeTrading:
             self.train(walk_id, train_loader)
             _, correct, total = self.evaluate(walk_id, test_loader, phase="test")
 
-            # self.test(test_loader)
-
             total_correct += correct
             total_samples += total
 
         final_accuracy = total_correct / total_samples
         print(f"Overall Test Accuracy across {self.num_walks} walks: {final_accuracy * 100:.2f}%")
 
-    def test(self, test_loader):
-        self.model.load_state_dict(torch.load(f"./Output_moe/models/dax/original/walk0.pth", map_location=self.device))
-        self.model.eval()
-
-        total_loss = 0
-        total_samples = 0
-        total_correct = 0
-
-        all_date = []
-        all_preds = []
-        all_labels = []
-
-        with torch.no_grad():
-            for date, context, qvalue, reward, risk, label in test_loader:
-                context = context.to(self.device)
-                qvalue = qvalue.to(self.device)
-                reward = reward.to(self.device)
-                risk = risk.to(self.device)
-                label = label.to(self.device)
-
-                action_logits, gate_weights, expert_logits = self.model(context, qvalue, reward, risk)
-                print("action_probs (softmax):", F.softmax(action_logits, dim=-1))
-
-                predicted = self.model.get_action(action_logits)
-                loss = self.loss_function(action_logits, label, expert_logits, gate_weights)
-
-                total_loss += loss.item() * label.size(0)
-                total_samples += label.size(0)
-                total_correct += (predicted == label).sum().item()
-
-                all_date.extend(date)
-                all_labels.extend(label.tolist())
-                all_preds.extend(predicted.tolist())
-
-        print("Accuracy:", accuracy_score(all_labels, all_preds))
-        print("Classification Report:\n", classification_report(all_labels, all_preds))
+    # def test(self, test_loader):
+    #     self.model.load_state_dict(torch.load(f"./Output_moe/models/dax/original/walk0.pth", map_location=self.device))
+    #     self.model.eval()
+    #
+    #     total_loss = 0
+    #     total_samples = 0
+    #     total_correct = 0
+    #
+    #     all_date = []
+    #     all_preds = []
+    #     all_labels = []
+    #
+    #     with torch.no_grad():
+    #         for date, context, qvalue, reward, risk, label in test_loader:
+    #             context = context.to(self.device)
+    #             qvalue = qvalue.to(self.device)
+    #             reward = reward.to(self.device)
+    #             risk = risk.to(self.device)
+    #             label = label.to(self.device)
+    #
+    #             action_logits, gate_weights, expert_logits = self.model(context, qvalue, reward, risk)
+    #             print("action_probs (softmax):", F.softmax(action_logits, dim=-1))
+    #
+    #             predicted = self.model.get_action(action_logits)
+    #             loss = self.loss_function(action_logits, label, expert_logits, gate_weights)
+    #
+    #             total_loss += loss.item() * label.size(0)
+    #             total_samples += label.size(0)
+    #             total_correct += (predicted == label).sum().item()
+    #
+    #             all_date.extend(date)
+    #             all_labels.extend(label.tolist())
+    #             all_preds.extend(predicted.tolist())
+    #
+    #     print("Accuracy:", accuracy_score(all_labels, all_preds))
+    #     print("Classification Report:\n", classification_report(all_labels, all_preds))
 
     # Function to end the Agent
     def end(self):

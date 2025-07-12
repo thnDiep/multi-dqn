@@ -16,8 +16,9 @@ from expert.attention_network import ModelType
 from utils.market_config import MARKET_CONFIG
 from expert.deepQTrading import DeepQTrading
 from router.moeTrading import MoeTrading
+from utils.data_loader import DataLoader
 
-sys.argv = ['main.py', 'dax', 'original', '1']
+# sys.argv = ['main.py', 'dax', 'original', '1']
 
 # Check input parameters
 if len(sys.argv) < 4:
@@ -34,7 +35,7 @@ if len(sys.argv) < 4:
 nb_actions = 3
 isOnlyShort = 0
 
-num_epochs = 100
+num_epochs = 200
 market = sys.argv[1]
 model_name = sys.argv[2]
 isMoe = sys.argv[3]
@@ -52,13 +53,15 @@ if model_name not in ModelType.get_values():
 
 start_time = time.time()
 if isMoe != '0':
-    if isMoe == '1':
-        moe_model = "flat"
-    elif isMoe == '2':
-        moe_model = "2d"
+    data_dir = f"./Output_moe/data/{market}/{model_name}"
+
+    if not os.path.exists(data_dir) or not os.listdir(data_dir):
+        # Run only if directory does not exist or is empty
+        loader = DataLoader(market, model_name, 100)
+        loader.process_all_walks(phase="valid")
+        loader.process_all_walks(phase="test")
     else:
-        print("Invalid MoE model")
-        sys.exit(1)
+        print(f"✅ Labeled dataset already exists at {data_dir}, skipping dataset generation.")
 
     config = {
         'lr': 5e-4,
@@ -72,7 +75,6 @@ if isMoe != '0':
     model = MoeTrading(
         market=market,
         model_name=model_name,
-        moe_model_type=moe_model,  # hoặc "flat"
         num_epochs=num_epochs,
         **config  # unpack grid search hyperparams
     )

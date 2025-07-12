@@ -8,26 +8,15 @@ class MoERouter(nn.Module):
     Đầu vào gồm 4 phần: context (bối cảnh), reward (thưởng), risk (rủi ro), q_values (giá trị Q)
     Kết hợp cả 4 để tính điểm cho từng expert, sau đó chọn ra top-k expert.
     """
-    def __init__(self, num_experts, hidden_dim=64, top_k=2):
+    def __init__(self, num_experts, hidden_dim=64, top_k=5):
         super().__init__()
         self.num_experts = num_experts
         self.top_k = top_k
 
         # Mỗi encoder ánh xạ đầu vào sang không gian ẩn
         self.context_encoder = nn.Linear(68, hidden_dim)
-        self.q_values_encoder = nn.Linear(3, hidden_dim)
-        self.reward_encoder = nn.Linear(2, hidden_dim)
-        self.risk_encoder = nn.Linear(2, hidden_dim)
-
-        # Attention layer tính điểm phân phối lên các expert
-        self.attn_layer = nn.Sequential(
-            nn.Linear(hidden_dim * 3 * 100 + hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, num_experts)
-        )
-
-        # Output layer để chuyển từ expert weights sang action predictions
-        self.action_predictor = nn.Linear(num_experts, 3)  # 3 actions: 0=hold, 1=buy, 2=sell
+        self.expert_encoder = nn.Linear(7, hidden_dim)
+        self.router_scorer = nn.Linear(hidden_dim * 2, 1)
 
     def forward(self, x_context, x_q_values, x_reward, x_risk):
         """
@@ -36,28 +25,18 @@ class MoERouter(nn.Module):
         - gate_weights: phân phối xác suất lên top-k expert (đã softmax)
         - expert_logits: điểm gốc của expert chưa chuẩn hóa (để dùng cho regularization loss)
         """
-        # Bước 1: Mã hóa từng thành phần đầu vào
-        c = self.context_encoder(x_context)
+        context_encoded = self.context_encoder(x_context)
+        context_expanded = context_encoded.unsqueeze(1).expand(-1, self.num_experts, -1)
 
-        q_encoded = self.q_values_encoder(x_q_values)
-        q = q_encoded.flatten(start_dim=1)
+        expert_inputs = torch.cat([x_q_values, x_reward, x_risk], dim=-1)  # (B,100,7)
+        expert_encoded = self.expert_encoder(expert_inputs)
 
-        r_encoded = self.reward_encoder(x_reward)
-        r = r_encoded.flatten(start_dim=1)
+        combined = torch.cat([expert_encoded, context_expanded], dim=-1)  # (B,100,hidden*2)
+        expert_logits = self.router_scorer(combined).squeeze(-1)  # (B,100)
 
-        k_encoded = self.risk_encoder(x_risk)
-        k = k_encoded.flatten(start_dim=1)
-
-        # Bước 2: Ghép 4 phần lại rồi đưa qua attention
-        combined = torch.cat([c, q, r, k], dim=-1)
-        expert_logits = self.attn_layer(combined)  # [batch_size, num_experts]
-
-        # Bước 3: Sparse Routing - chỉ chọn top-k expert có điểm cao nhất
         topk_val, topk_idx = torch.topk(expert_logits, self.top_k, dim=-1)
         sparse_weights = torch.full_like(expert_logits, float('-inf')).scatter(-1, topk_idx, topk_val)
-
-        # Bước 4: Áp dụng softmax lên các expert đã chọn (còn lại = 0)
-        gate_weights = F.softmax(sparse_weights, dim=-1)
+        gate_weights = F.softmax(sparse_weights, dim=-1)  # (B,100)
 
         final_q_values = torch.bmm(gate_weights.unsqueeze(1), x_q_values).squeeze(1)  # (B, 3)
         action_logits = final_q_values

@@ -103,19 +103,21 @@ class DataLoader:
             action = df[col]
 
             accuracy = pd.Series(0, index=df.index)
-            
+            reward = pd.Series(0.0, index=df.index)
+
             # Win
             accuracy[(action == Action.BUY.value) & (df['Close'] > df['Open'])] = 1
             accuracy[(action == Action.SELL.value) & (df['Close'] < df['Open'])] = 1
+
+            reward[(action == Action.BUY.value) & (df['Close'] > df['Open'])] = base_reward
+            reward[(action == Action.SELL.value) & (df['Close'] < df['Open'])] = -base_reward
 
             # Loss
             accuracy[(action == Action.BUY.value) & (df['Close'] < df['Open'])] = -1
             accuracy[(action == Action.SELL.value) & (df['Close'] > df['Open'])] = -1
 
-            # Tính reward theo accuracy
-            reward = pd.Series(0.0, index=df.index)
-            reward[accuracy == 1] = base_reward
-            reward[accuracy == -1] = -base_reward
+            reward[(action == Action.BUY.value) & (df['Close'] < df['Open'])] = base_reward
+            reward[(action == Action.SELL.value) & (df['Close'] > df['Open'])] = -base_reward
 
             result[f'e{i}_reward'] = reward
             result[f'e{i}_acc'] = accuracy

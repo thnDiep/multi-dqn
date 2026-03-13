@@ -4,14 +4,6 @@
 
 Deep reinforcement learning has shown promise for algorithmic trading, particularly when decisions are made from market signals observed across multiple temporal horizons. However, many multi-resolution trading architectures still rely on flat feature concatenation followed by uniform dense processing, which obscures the relative importance of hourly, daily, and weekly information and limits interpretability. In this paper, we propose a modular timeframe-aware attention framework for multi-resolution Deep Q-Trading. The framework introduces three complementary attention mechanisms that operate at different levels of granularity: Global Feature Attention (GFA), which reweights the full input representation; Local Feature Attention (LFA), which emphasizes salient features within each temporal segment; and Time-Frame Attention (TFA), which explicitly models the relative contribution of entire temporal resolutions through a gating mechanism. Unlike feature-only reweighting schemes, TFA is designed to capture hierarchical market dynamics by learning how short-, medium-, and longer-horizon signals should be prioritized under changing market conditions. Importantly, the proposed modules preserve the original optimization and training pipeline, enabling a controlled analysis of representational effects independent of algorithmic changes. Experiments on DAX, S&P 500, and MSFT under walk-forward evaluation show that timeframe-aware weighting consistently improves robustness and profitability, with TFA delivering the strongest and most stable performance across datasets and ensemble agreement thresholds. These findings highlight the importance of modeling timeframe-specific information in multi-resolution reinforcement-learning-based trading.
 
-## Authors
-
--   Salvatore Carta
--   Anselmo Ferreira
--   Alessandro Sebastian Podda
--   Diego Reforgiato Recupero
--   Antonio Sanna
-
 ---
 
 ## Description
